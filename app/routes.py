@@ -1,7 +1,6 @@
 from app import app, openidc
+from flask_restful import Api
 
-#@app.route('/')
-#@app.route('/index')
 def index():
 	"""[summary]
 	Hello world function
@@ -13,25 +12,17 @@ def index():
 ##### Index
 app.add_url_rule('/v1.0/','index',index)
 
-##### User information
-app.add_url_rule('/v1.0/userinfo','get_userinfo_api', openidc.get_userinfo_api, methods=['GET'])
+api = Api(app)
+api.add_resource(openidc.Client,'/v1.0/clients/<client_id>')
+api.add_resource(openidc.Clients,'/v1.0/clients')
 
-##### Tokens
-app.add_url_rule('/v1.0/alltokens','get_tokens_api', openidc.get_tokens_api, methods=['GET'])
+api.add_resource(openidc.Token,'/v1.0/tokens/<token>')
+api.add_resource(openidc.Tokens,'/v1.0/tokens')
 
-app.add_url_rule('/v1.0/tokens','logout_api', openidc.logout_api, methods=['DELETE'])
-app.add_url_rule('/v1.0/tokens','refresh_token_api', openidc.refresh_token_api, methods=['PUT'])
-app.add_url_rule('/v1.0/tokens','introspect_accesstoken_api', openidc.instropect_accesstoken_api, methods=['GET'])
+api.add_resource(openidc.UserInfo,'/v1.0/userinfo/<token>')
 
-##### Clients
-app.add_url_rule('/v1.0/clients','set_client_api', openidc.set_client_api, methods=['PUT'])
-app.add_url_rule('/v1.0/clients','create_client_api', openidc.create_client_api, methods=['POST'])
+api.add_resource(openidc.Users,'/v1.0/users')
+api.add_resource(openidc.User,'/v1.0/users/<username>')
 
-app.add_url_rule('/v1.0/admin','set_admin_api', openidc.set_admin_api, methods=['POST'])
-
-##### Users
-app.add_url_rule('/v1.0/users','create_user_api', openidc.create_user_api, methods=['POST'])
-app.add_url_rule('/v1.0/users','retrieve_user_api', openidc.retrieve_user_by_username_api, methods=['GET'])
-app.add_url_rule('/v1.0/users','delete_user_api', openidc.delete_user_api, methods=['DELETE'])
-app.add_url_rule('/v1.0/users','update_user_api', openidc.update_user_by_username_api, methods=['PUT'])
+api.add_resource(openidc.UserPassword,'/v1.0/users/<username>/password')
 

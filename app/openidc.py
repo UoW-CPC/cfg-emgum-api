@@ -1,6 +1,6 @@
 from flask import Flask
 from flask import jsonify, abort, Response
-from flask_restful import request
+from flask_restful import request, reqparse, fields, marshal, Resource
 from keycloak import KeycloakOpenID
 from keycloak import KeycloakAdmin
 import os
@@ -9,248 +9,76 @@ import csv
 import string
 import requests
 import jsonurl
+from app import app
+import random
+from random import randint
 
+##### CONSTANT VALUES
 # http codes
 # Success
 HTTP_CODE_OK = 200
-# HTTP_CODE_CREATED = 201
+HTTP_CODE_CREATED = 201
 # Clients's errors
 HTTP_CODE_BAD_REQUEST = 400
 HTTP_CODE_UNAUTHORIZED = 401
 HTTP_CODE_NOT_FOUND = 404
+HTTP_CODE_CONFLICT = 409
 #HTTP_CODE_LOCKED = 423
 # Server error
 HTTP_CODE_SERVER_ERR = 500
 
-# import the resource of all messages
-'''reader = csv.DictReader(open('resource.csv', 'r'))
-msg_dict = {}
-for row in reader:
-	msg_dict[row['Code']] = row['Message']'''
-
-
-#SERVER_URL = "http://10.20.151.49:8180/auth/"
-#CLIENT_ID = "appDM"
-#REALM_NAME = "demo"
-#CLIENT_SECRET = "d5e62000-4f60-40c3-8642-abfd0a9523e2"
-
-#SERVER_URL = "http://31.171.247.142:8080/auth/"
-#CLIENT_ID = "app02"
-#REALM_NAME = "app01"
-#CLIENT_SECRET = "581ff333-aba1-4f45-9f27-0a06704d099b" #app2
-#CLIENT_SECRET = "e532ea62-2743-4cea-89b3-ffc58664f739" #APP1
-
-#keycloak_openid = KeycloakOpenID(server_url=SERVER_URL,client_id=CLIENT_ID, realm_name=REALM_NAME, client_secret_key=CLIENT_SECRET,verify=True)
-#token = keycloak_openid.token("user01","123")  
-
-
-#def get_accesstoken_api():
-#	return token['access_token']
-
-#def get_refreshtoken():
-#	return token['refresh_token']
-
 PASSWD_MIN_LEN = 8 # characters
 PASSWD_MAX_LEN = 16 # characters
 
-registration_endpoint = "http://31.171.246.187:8080/auth/realms/realm01/clients-registrations/openid-connect"
+##### END - CONSTANT VALUES
 
-def set_client_api():
-	serverurl = request.values.get("server")
-	realmname = request.values.get("realm")
-	clientid = request.values.get("id")
- 	clientsecret = request.values.get("secret")
-	global keycloak_openid 
-	keycloak_openid  = KeycloakOpenID(server_url=serverurl,client_id=clientid, realm_name=realmname, client_secret_key=clientsecret,verify=True)
 
-	# not yet: check if client is valid or not
+##### GLOBAL CONFIGURATION AND VARIABLES
+# Loading configuration from config.json file
+with open('config.json', 'r') as f:
+	config = json.load(f)
+
+KEYCLOAK_SERVER = config['DEFAULT']['KEYCLOAK_SERVER']
+KEYCLOAK_REALM = config['DEFAULT']['KEYCLOAK_REALM']
+
+MANAGER_USERNAME = config['DEFAULT']['MANAGER_USERNAME']
+MANAGER_PASSWORD = config['DEFAULT']['MANAGER_PASSWORD']
+
+# import the resource of all messages
+reader = csv.DictReader(open('resource.csv', 'r'))
+msg_dict = {}
+for row in reader:
+    msg_dict[row['Code']] = row['Message']
+##### END - GLOBAL CONFIGURATION AND VARIABLES
+
+
+##### INTERNAL FUNCTIONS
+def create_json_response(http_code, message_label, info_for_developer="", additional_json = {}):
 	data = {
-			'code' : HTTP_CODE_OK,
-			'user message'  : 'set client successfully',
-			'developer message' : 'set client successfully'
-	}   
+		'code' : http_code,
+		'user message'  : msg_dict[message_label],
+		'developer message' : msg_dict[message_label] + info_for_developer
+	}
+	data.update(additional_json)   
 	js = json.dumps(data)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
+	resp = Response(js, status=http_code, mimetype='application/json')
 	return resp
 
-def get_tokens_api():
-	username = request.values.get("username")
-	password = request.values.get("password")
-	try:
-		token = keycloak_openid.token(username,password)
-	except Exception as e:
-		raise e
-		data = {
-			'code' : HTTP_CODE_UNAUTHORIZED,
-			'user message'  : 'Invalid user credentials',
-			'developer message' : 'Invalid user credentials'
-		}   
-		js = json.dumps(data)
-		resp = Response(js, status=HTTP_CODE_UNAUTHORIZED, mimetype='application/json')
-		return resp
-		
-	js = json.dumps(token)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
-    
-def get_userinfo_api():
-	access_token = request.values.get("token")
-	try:
-		userinfo = keycloak_openid.userinfo(access_token)
-	except:
-		data = {
-			'code' : HTTP_CODE_UNAUTHORIZED,
-			'user message'  : 'Authentication error: Invalid token',
-			'developer message' : 'Authentication error: Invalid token'
-		}   
-		js = json.dumps(data)
-		resp = Response(js, status=HTTP_CODE_UNAUTHORIZED, mimetype='application/json')
-		return resp
 
-		
-	js = json.dumps(userinfo)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
+def retrieve_realm_admin_access_token():
+	request_token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
+	#print request_token_link
 
-def logout_api():
-	# refresh_token = get_refreshtoken()
-	refresh_token = request.values.get("token")
-	keycloak_openid.logout(refresh_token)
-		
-	data = {
-			'code' : HTTP_CODE_OK,
-			'user message'  : 'User is logged out',
-			'developer message' : 'User is logged out'
-	}   
-	js = json.dumps(data)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
+	payload = {"client_id" : "admin-cli",
+		"username" : MANAGER_USERNAME,
+		"password" : MANAGER_PASSWORD,
+		"grant_type" : "password"}
 
-# retrieve the active state of a token
-def refresh_token_api():
-	refresh_token = request.values.get("token")
-	try:
-		new_token = keycloak_openid.refresh_token(refresh_token)
-	except:
-		data = {
-			'code' : HTTP_CODE_UNAUTHORIZED,
-			'user message'  : 'Session is not active',
-			'developer message' : 'Session is not active'
-		}   
-		js = json.dumps(data)
-		resp = Response(js, status=HTTP_CODE_UNAUTHORIZED, mimetype='application/json')
-		return resp 
-			
-	js = json.dumps(new_token)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
+	r = requests.post(request_token_link,data=payload) # data is in x-www-form-urlencoded
+	response  = r.json()
+	access_token = response['access_token']
 
-def instropect_accesstoken_api():
-	access_token = request.values.get("token")
-	try:
-		token_info = keycloak_openid.introspect(access_token)
-	except Exception as e:
-		data = {
-			'code' : HTTP_CODE_BAD_REQUEST,
-			'user message'  : 'Invalid token',
-			'developer message' : 'Invalid token'
-		}   
-		js = json.dumps(data)
-		resp = Response(js, status=HTTP_CODE_BAD_REQUEST, mimetype='application/json')
-		return resp 
-		
-	js = json.dumps(token_info)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
-
-def set_admin_api():
-	url = request.values.get("server")
-	name = request.values.get("name")
-	password = request.values.get("password")
- 	realm = request.values.get("realm")
-
- 	global keycloak_admin
-	keycloak_admin = KeycloakAdmin(server_url=url,username=name,password=password,realm_name=realm,verify=True)
-
-	data = {
-			'code' : HTTP_CODE_OK,
-			'user message'  : 'set admin successfully',
-			'developer message' : 'set admin successfully'
-	}   
-	js = json.dumps(data)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
-
-def create_user_api():
-	email = request.values.get("email")
-	username = request.values.get("username")
-	password = request.values.get("password")
-	firstname =request.values.get("firstname")
-	lastname = request.values.get("lastname")
- 	realmname = request.values.get("realm")
- 	organization = request.values.get("org")
- 	
-	new_user = keycloak_admin.create_user({"email": email,
-                    "username": username,
-                    "enabled": True,
-                    "firstName": firstname,
-                    "lastName": lastname,
-                    "credentials": [{"value": password,"type": "password",}],
-                    "realmRoles": ["user_default", ],
-                    "attributes": {"organization": organization}})
-	data = {
-			'code' : HTTP_CODE_OK,
-			'user message'  : 'Created user successfully',
-			'developer message' : 'Created user successfully'
-	}   
-	js = json.dumps(data)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp  
-'''
-def retrieve_all_users_api():
-	users = keycloak_admin.get_users({})
-	js = json.dumps(users)
-	resp = Response(js, status=HTTP_CODE_BAD_OK, mimetype='application/json')
-	return resp  
-'''
-
-def retrieve_user_by_username_api():
-	username = request.values.get("username")
-	user_id_keycloak = keycloak_admin.get_user_id(username)
-
-	user = keycloak_admin.get_user(user_id_keycloak)
-	print user
-	
-	data = {
-		'code' : HTTP_CODE_OK,
-		'user message'  : 'Retrieve user successfully',
-		'developer message' : 'Retrieve user successfully'
-	} 
-	js = json.dumps(user)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
-
-	
-def update_user_by_username_api():
-	#username = request.values.get("username")
-	payload = request.query_string
-	#print payload
-	#payload_json = request.json
-	payload_json = jsonurl.parse_query(payload)
-	#print payload_json
-	#print payload_json
-	username = payload_json['username']
-	user_id_keycloak = keycloak_admin.get_user_id(username)
-	keycloak_admin.update_user(user_id=user_id_keycloak,
-                                      payload=payload_json)
-	data = {
-			'code' : HTTP_CODE_OK,
-			'user message'  : 'Update user successfully',
-			'developer message' : 'Update user successfully'
-	}   
-	js = json.dumps(data)
-	resp = Response(js, status=HTTP_CODE_UNAUTHORIZED_OK, mimetype='application/json')
-	return resp
+	return access_token
 
 def generate_passwd():
 	"""[summary]
@@ -262,65 +90,385 @@ def generate_passwd():
 		[type: String] -- [description: a generated password]
 	"""
 	characters = string.ascii_letters + string.digits # + string.punctuation
-	passwd =  "".join(choice(characters) for x in range(randint(PASSWD_MIN_LEN, PASSWD_MAX_LEN)))
+	passwd =  "".join(random.choice(characters) for x in range(randint(PASSWD_MIN_LEN, PASSWD_MAX_LEN)))
 	return passwd
+##### END - INTERNAL FUNCTIONS
 
-def reset_user_password_by_username_api():
-	username = request.values.get("username")
-	user_id_keycloak = keycloak_admin.get_user_id(username)
+##### MODELS
+# Keys in client_model (id, name) must match with fields of client object returned by Keycloak
+client_model_view = {
+	'id': fields.String, # client_id
+	'name' : fields.String, # client_name
+	'redirectUris' : fields.String,
+}
+
+client_model_create = {
+	'redirect_uris' : fields.String,
+	'client_name' : fields.String
+}
+
+client_model_update = {
+	'name' : fields.String,
+	'clientId' : fields.String, # required. clientId is different from id of client. Id of client is fixed while clientId could be changed
+	'baseUrl' : fields.String,
+	'redirectUris' : fields.List(fields.String)
+}
+
+user_model_view = {
+	'username' : fields.String,
+	'email' : fields.String,
+	'firstName' : fields.String,
+	'lastName' : fields.String
+	#'attributes' : fields.String
+}
+
+user_model_update = {
+	'firstName' : fields.String,
+	'lastName' : fields.String
+}
+##### END - MODELS
+##### RESOURCES
+class Client(Resource):
+	def get(self,client_id):
+		access_token = retrieve_realm_admin_access_token()
+
+		headers = {"Authorization":"Bearer " + access_token} # create headers
+		clients_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/clients/" + client_id
+		r = requests.get(clients_link, headers=headers)
+		client = r.json()
+
+		return json.dumps(marshal(client, client_model_view)) # Filter the client information with client_model
+	def put(self,client_id):
+		json_body = request.json
+		access_token = retrieve_realm_admin_access_token()
+		headers = {"Authorization":"Bearer " + access_token}
+		
+		clients_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/clients/" + client_id
+		
+		json_body = request.json
+		client_new_info = dict(marshal(json_body, client_model_update)) # filter input information
+		#print client_new_info
+		try:
+			r = requests.put(clients_link, json = client_new_info, headers=headers)
+			resp = create_json_response(HTTP_CODE_OK,'update_client_successful')
+			return resp
+		except Exception as e:
+			app.logger.error(e) 
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_update_client')
+			return resp
+	def delete(self,client_id):
+		clients_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/clients/" + client_id
+		
+		access_token = retrieve_realm_admin_access_token()
+		headers = {"Authorization":"Bearer " + access_token}
+		
+		try:
+			r = requests.delete(clients_link, headers=headers)
+			resp = create_json_response(HTTP_CODE_OK,'delete_client_successful')
+			return resp
+		except Exception as e:
+			app.logger.error(e) 
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'delete_client_failed')
+			return resp
+
+class Clients(Resource):
+	def post(self):
+		json_body = request.json # json_body should be {'client_name' : name_of_application_registering_to_keycloak}
+
+		#headers = {"Authorization":"Bearer <bearer token granted by keycloak server>"}
+		headers = {"Authorization":dict(request.headers)['Authorization']}
+
+		#r = "http://<IP address of keycloak server>:8080/auth/realms/<realm name>/clients-registrations/openid-connect"
+		request_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/clients-registrations/openid-connect"
+		
+		# Send a request to keycloak server to dynamically register as keycloak client
+		try:
+			r = requests.post(request_link, json = json_body, headers=headers)
+			response = r.json()
+
+			resp = create_json_response(HTTP_CODE_OK,'register_client_success')
+			return resp
+		except Exception as e:
+			app.logger.error(e) 
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'register_client_failed')
+			return resp
+
+class Token(Resource):
+	def put(self,token): # refresh/ renew access token. Token = refresh token
+		json_body = request.json
+		client_id = json_body ['client_id']
+		#print client_id
+
+		client_secret = json_body ['client_secret']
+		#print client_secret
+
+		try:
+			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			new_token = keycloak_openid.refresh_token(token)
+			resp = create_json_response(HTTP_CODE_OK,"succeed_to_refresh_token",additional_json=new_token)
+			return resp
+		except:
+			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,"fail_to_refresh_token")
+			return resp
+	def delete(self,token): #  log out. Token = refesh token
+		json_body = request.json
+		client_id = json_body['client_id']
+		#print client_id
+		client_secret = json_body['client_secret']
+		#print client_secret	
+		try:
+			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			keycloak_openid.logout(token)
+			resp = create_json_response(HTTP_CODE_OK,'succeed_to_log_out')
+			return resp
+		except Exception as e:
+			app.logger.error(e)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_log_out')
+			return resp
+	def get(self,token): # introspect/ verify token
+		parser = reqparse.RequestParser()
+		parser.add_argument('client_id')
+		parser.add_argument('client_secret')
+		args = parser.parse_args()
+		client_id = args['client_id']
+		client_secret = args['client_secret']
+		#print client_id
+		#print client_secret
+		try:
+			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			token_info = keycloak_openid.introspect(token)
+			if token_info["active"]: # token is valid
+				resp = create_json_response(HTTP_CODE_OK,'valid_token',additional_json=token_info)
+			else: # token is not valid
+				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'invalid_token')
+			return resp
+		except Exception as e:
+			app.logger.error(e)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'invalid_token')
+			return resp
+
+class Tokens(Resource):
+	def post(self): #  retrieve access and refresh token from user's username and password
+		json_body = request.json
+		username = json_body ['username']
+		password = json_body ['password']
+
+		client_id = json_body ['client_id']
+
+		client_secret = json_body ['client_secret']
+
+		try:
+			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			tokens = keycloak_openid.token(username,password)
+			resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_tokens',additional_json=tokens)
+			return resp
+		except Exception as e:
+			app.logger.error(e) 
+			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_tokens')
+			return resp
+
+
+class UserInfo(Resource):
+	def get(self,token): # get user information. Token = access token
+		parser = reqparse.RequestParser()
+		parser.add_argument('client_id')
+		parser.add_argument('client_secret')
+		args = parser.parse_args()
+		client_id = args['client_id']
+		client_secret = args['client_secret']
+		#print client_id
+		#print client_secret
+		try:
+			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			userinfo = keycloak_openid.userinfo(token)
+			#print userinfo
+			resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_user_info',additional_json=userinfo)
+			return resp
+		except Exception as e:
+			app.logger.error(e)
+			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_user_info')
+			return resp
+
+##### END - RESOURCES
+class Users(Resource):
+	def post(self):
+		json_body = request.json
+
+		email = json_body ['email']
+		username = json_body ['username']
+		password = json_body ['password']
+		firstname = json_body ['firstname']
+		lastname = json_body ['lastname']
+		#organization = json_body ['organization']
+
+		#print email
+		#print config['DEFAULT']['MANAGER_USERNAME']
+		#print config['DEFAULT']['MANAGER_PASSWORD']
+
+		try: 		
+			#keycloak_admin = KeycloakAdmin(server_url=KEYCLOAK_SERVER,username=config['DEFAULT']['MANAGER_USERNAME'],password=config['DEFAULT']['MANAGER_PASSWORD'],realm_name=KEYCLOAK_REALM,verify=True)
+
+			#request_link = KEYCLOAK_SERVER + "/admin/realms/" + KEYCLOAK_REALM + "/users"
+			new_user = {"email": email,
+				"username": username,
+				"enabled": True,
+				"firstName": firstname,
+				"lastName": lastname,
+				"realmRoles": ["user_default", ],
+				#"attributes": {"organization": organization},
+				"credentials": [{"value": password,"type": "password",}]
+			}
+			''',
+				"credentials": [{"value": password,"type": "password",}],
+				"realmRoles": ["user_default", ],
+				"attributes": {"organization": organization}}'''
+
+			access_token = retrieve_realm_admin_access_token()
+			#print access_token
+
+			create_user_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users"
+			#print create_user_link
+			
+			headers = {'Authorization': 'Bearer ' + access_token}
+
+			#headers = {"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJHRGF2RnlXWXlBd2tWRFBpWFFVZnFsdTZJVjhxMldXZVNRQ2praW1WS1RJIn0.eyJqdGkiOiIyNWRhNTkzMy00OTIzLTQwMTItOTdmNC1iYzVmNGZmMDYxYWEiLCJleHAiOjE1MzY4NDAwODYsIm5iZiI6MCwiaWF0IjoxNTM2ODM5Nzg2LCJpc3MiOiJodHRwOi8vMzEuMTcxLjI0NS43NDo4MDgwL2F1dGgvcmVhbG1zL3JlYWxtMDEiLCJhdWQiOiJhZG1pbi1jbGkiLCJzdWIiOiI4MjlhOWE1YS0xMzUxLTQ4ZWYtOTlkNi1hZmRlNjI3YjVmZTciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJhZG1pbi1jbGkiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIyODU5OWM4Yi1jYTllLTQyZjctYmQ3ZS1lNzE5NzUxZmZiMDgiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbXSwicmVzb3VyY2VfYWNjZXNzIjp7fSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhZG1pbjAxIn0.Mv8EoGLbDCvtqL8MJ5op1tJUKVWZeyOI2v-4_F8CuHjcp3V8hRz_kKAqaGoKiKHWm0Usf8iHtdECeAnQLYjusiNJh0IinmSjEXj0Cmi9kjHw62xfZk_I8MQtgfOaQVCSy9-cxuTSmbJoVv531TDzOojY_2KI4ul_hZ78Dtk6eKTz1RiiCpIbxnSat1NPWWCJs-wi5Xd9r8a5NmPOfSKlFKFnTT9zWVuxeGLehky-7R7wo7tovIDekJhRtmuNOyLxKzdLKxjpz7VjB_TVhjuJ7xQBKQA4ypEqL9C2K7PCPydpy-kSFEX6_dL8cDt79zFvHEytOt1Rw828PA6ZylKo-w"}
+			print headers
+			r = requests.post(create_user_link,json=new_user,headers=headers)
+			print r.status_code
+			if r.status_code == HTTP_CODE_CREATED:
+				resp = create_json_response(HTTP_CODE_CREATED,'create_user_successful')
+			elif r.status_code == HTTP_CODE_UNAUTHORIZED:
+				resp = create_json_response(HTTP_CODE_CREATED,'create_user_failed',info_for_developer="Please check username and password of manager user in config.json file")
+			elif r.status_code == HTTP_CODE_CONFLICT:
+				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'create_user_failed', info_for_developer = "Email existed")
+			else:
+				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'create_user_failed')
+			return resp
+		except Exception as e:
+			app.logger.error(e)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'create_user_failed')
+			return resp
 	
-	temppwd = generate_passwd()
-	response = keycloak_admin.set_user_password(user_id=user-id-keycloak, password=temppwd, temporary=True)
- 	data = {
-			'code' : HTTP_CODE_OK,
-			'user message'  : temppwd,
-			'developer message' : temppwd
-	}   
-	js = json.dumps(data)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
+class User(Resource):
+	def get(self,username): # retrieve user
+		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users"
 
-def delete_user_api():
-	username = request.values.get("username")
-	user_id_keycloak = keycloak_admin.get_user_id(username)
-	response = keycloak_admin.delete_user(user_id=user_id_keycloak)
-	data = {
-			'code' : HTTP_CODE_OK,
-			'user message'  : 'Delete user successfully',
-			'developer message' : 'Delete user successfully'
-	}   
-	js = json.dumps(data)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp  
-#validate user
-#user management
-#dynamic registration
-#roles management
+		try:
+			#keycloak_admin = KeycloakAdmin(server_url=KEYCLOAK_SERVER,username=config['DEFAULT']['MANAGER_USERNAME'],password=config['DEFAULT']['MANAGER_PASSWORD'],realm_name=KEYCLOAK_REALM,verify=True)
+			access_token = retrieve_realm_admin_access_token()
+			headers = {'Authorization': 'Bearer ' + access_token}
 
-def create_client_api():
-	payload = request.query_string
-	payload_json = jsonurl.parse_query(payload)
-	#payload_json = request.data
-	#print payload_json
-	#print payload_json2
-	#payload_json3 = {"client_name":"app7"}
+			#headers = {"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJHRGF2RnlXWXlBd2tWRFBpWFFVZnFsdTZJVjhxMldXZVNRQ2praW1WS1RJIn0.eyJqdGkiOiIyNWRhNTkzMy00OTIzLTQwMTItOTdmNC1iYzVmNGZmMDYxYWEiLCJleHAiOjE1MzY4NDAwODYsIm5iZiI6MCwiaWF0IjoxNTM2ODM5Nzg2LCJpc3MiOiJodHRwOi8vMzEuMTcxLjI0NS43NDo4MDgwL2F1dGgvcmVhbG1zL3JlYWxtMDEiLCJhdWQiOiJhZG1pbi1jbGkiLCJzdWIiOiI4MjlhOWE1YS0xMzUxLTQ4ZWYtOTlkNi1hZmRlNjI3YjVmZTciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJhZG1pbi1jbGkiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIyODU5OWM4Yi1jYTllLTQyZjctYmQ3ZS1lNzE5NzUxZmZiMDgiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbXSwicmVzb3VyY2VfYWNjZXNzIjp7fSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhZG1pbjAxIn0.Mv8EoGLbDCvtqL8MJ5op1tJUKVWZeyOI2v-4_F8CuHjcp3V8hRz_kKAqaGoKiKHWm0Usf8iHtdECeAnQLYjusiNJh0IinmSjEXj0Cmi9kjHw62xfZk_I8MQtgfOaQVCSy9-cxuTSmbJoVv531TDzOojY_2KI4ul_hZ78Dtk6eKTz1RiiCpIbxnSat1NPWWCJs-wi5Xd9r8a5NmPOfSKlFKFnTT9zWVuxeGLehky-7R7wo7tovIDekJhRtmuNOyLxKzdLKxjpz7VjB_TVhjuJ7xQBKQA4ypEqL9C2K7PCPydpy-kSFEX6_dL8cDt79zFvHEytOt1Rw828PA6ZylKo-w"}
+			search_criteria = {
+				"username" : username
+			}
 
-	#headers = request.headers
-	#headers = {"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsImtpZCIgOiAiR0RhdkZ5V1l5QXdrVkRQaVhRVWZxbHU2SVY4cTJXV2VTUUNqa2ltVktUSSJ9.eyJqdGkiOiJiZDk2NWNmZi01N2Q2LTQxOWUtOTAyNC0wMTRlMTExYTRiNzIiLCJleHAiOjE1MzYxNjAyMzksIm5iZiI6MCwiaWF0IjoxNTM1NzI4MjM5LCJpc3MiOiJodHRwOi8vMzEuMTcxLjI0Ni4xODc6ODA4MC9hdXRoL3JlYWxtcy9yZWFsbTAxIiwiYXVkIjoiaHR0cDovLzMxLjE3MS4yNDYuMTg3OjgwODAvYXV0aC9yZWFsbXMvcmVhbG0wMSIsInR5cCI6IkluaXRpYWxBY2Nlc3NUb2tlbiJ9.gE7MT0eYOBJL3SyOHc9WfDqeHGKdDqakkAoET6lgtvD7yTHECu-OLLaBePgCpAsw9pFvJgzb2McDUYtFNYJvWSzXOuauYtKF5hkQWsnakHAd-d_Uwagu0f8Hp7eZi5wQkSskal-xwpOlL9H_gZxCTK7PaOVdURiIBlcPHte6zlbU25GxC_aC3Dw1-aDHDwFCPw-TzfxMRZccWDkNfAFeA9BKSYe03JxvGG-OEVYA0mNuONjcW5vDMyNafzp6b3QP6t38-PfU7uwfwIn0lOSQi6-AGrDYhU62hl_5dEZW96cmRhEHXu2nlsQrTM4NjZIMLAFYefYdoa8Lxrto5TEedg"}
-	headers = {"Authorization":dict(request.headers)['Authorization']}
-	#print dict(request.headers)['Authorization']
-	#print registration_endpoint
-	#print payload_json
-	r = requests.post("http://31.171.246.187:8080/auth/realms/realm01/clients-registrations/openid-connect", json = payload_json, headers=headers)
-	print(r.status_code, r.reason)
+			r = requests.get(users_link,params=search_criteria,headers=headers)
+			'''user_id_keycloak = keycloak_admin.get_user_id(username)
+			print user_id_keycloak
 
-	data = {
-			'code' : HTTP_CODE_OK,
-			'user message'  : "create client successfully",
-			'developer message' : "create client successfully"
-	}   
-	js = json.dumps(data)
-	resp = Response(js, status=HTTP_CODE_OK, mimetype='application/json')
-	return resp
+			user = keycloak_admin.get_user(user_id_keycloak)
+			print user'''
 
-#curl -X POST -d '{ "client_name": "app05" }' -H "Content-Type:application/json" -H "Authorization: bearer eyJhbGciOiJSUzI1NiIsImtpZCIgOiAiR0RhdkZ5V1l5QXdrVkRQaVhRVWZxbHU2SVY4cTJXV2VTUUNqa2ltVktUSSJ9.eyJqdGkiOiIwMDM5Njk3OS1jOGNlLTRmMjMtYTg0Yi0xNjIzM2VhOTcwZjUiLCJleHAiOjE1MzU4OTk4NjMsIm5iZiI6MCwiaWF0IjoxNTM1NzI3MDYzLCJpc3MiOiJodHRwOi8vMzEuMTcxLjI0Ni4xODc6ODA4MC9hdXRoL3JlYWxtcy9yZWFsbTAxIiwiYXVkIjoiaHR0cDovLzMxLjE3MS4yNDYuMTg3OjgwODAvYXV0aC9yZWFsbXMvcmVhbG0wMSIsInR5cCI6IkluaXRpYWxBY2Nlc3NUb2tlbiJ9.bD6NQYqbuoVjgFFljfQZqesPkgEFN_tPSn0ywh0ZugDtRYcvv4vc1nOdUmYiNbVz3rdLNtLtlNuv59H9qyOnA1dp3iHiJXVyGHHlJAT7TxOXPXQnn4PvvCj0P_kpottr1HYEhVC6hBpwQxg6t5FB82QdOQevGAkCP68sIVsM3BJ0t22dDs7rLYiRzzAEnkyXvRUwJy8FUdMlWIHG6yupsyHTe33sTbo2TinXSSImuEWq5Sq-NgUm2YQuywaZTXHFxrmtNY7DdQMTG_rbulDAfMJqq2iWKSLbRo3lnAozGgKwKySMyLUOO39BZrLM_I3ODUYwxMOXFuOB0XR985x-sw" http://31.171.246.187:8080/auth/realms/realm01/clients-registrations/openid-connect
+			#response = dict(marshal(r.json(), user_model_view)[0])
+			response = r.json()[0]
+			print response
+			resp = create_json_response(HTTP_CODE_OK,"retrieve_user_successful",additional_json=response)
+			
+			return resp
+		except Exception as e:
+			app.logger.error(e)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"retrieve_user_failed")
+
+	def put(self,username): # update user
+		#username = request.values.get("username")
+		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users/" 
+		json_body = request.json
+		try:
+			access_token = retrieve_realm_admin_access_token()
+			headers = {'Authorization': 'Bearer ' + access_token}
+
+			update_info = dict(marshal(request.json, user_model_update))
+			#print update_info
+
+			search_criteria = {
+				"username" : username
+			}
+
+			r = requests.get(users_link,params=search_criteria,headers=headers)
+			user_id  = r.json()[0]['id']
+			update_users_link = users_link + user_id
+			#print update_users_link
+
+			r = requests.put(update_users_link,json=update_info,headers=headers)
+			#print r.text
+			resp = create_json_response(HTTP_CODE_OK,"update_user_successful")
+			
+			return resp
+		except Exception as e:
+			app.logger.error(e)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"update_user_failed")
+			return resp
+	def delete(self,username): # delete user
+		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users/" 
+		try:
+			access_token = retrieve_realm_admin_access_token()
+			headers = {'Authorization': 'Bearer ' + access_token}
+			#print headers
+
+			search_criteria = {
+				"username" : username
+			}
+			r = requests.get(users_link,params=search_criteria,headers=headers)
+			user_id  = r.json()[0]['id']
+			#print user_id
+
+			delete_users_link = users_link + user_id
+			#print delete_users_link
+
+			r = requests.delete(delete_users_link,headers=headers)
+			#print r.text
+
+			resp = create_json_response(HTTP_CODE_OK,"delete_user_successful")
+			return resp  
+		except Exception as e:
+			app.logger.error(e)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"delete_user_failed")
+			return resp
+
+class UserPassword(Resource):
+	#def post(self, username): # create a new password (after user has reset password)
+	#def put(self, username): # change password
+	def delete(self, username): # reset password
+		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users/" 
+		try:
+			access_token = retrieve_realm_admin_access_token()
+			headers = {'Authorization': 'Bearer ' + access_token}
+			#print headers
+
+			search_criteria = {
+				"username" : username
+			}
+			r = requests.get(users_link,params=search_criteria,headers=headers)
+			user_id  = r.json()[0]['id']
+			#print user_id
+
+			reset_password_link = users_link + user_id + "/reset-password"
+			#print reset_password_link
+
+			temp_password = generate_passwd()
+			#print temp_password
+			new_credentials = {
+				"value": temp_password,
+				"type": "password"
+			}
+			r = requests.put(reset_password_link,json=new_credentials,headers=headers)
+			#print r.status_code
+			#print r.text
+
+			resp = create_json_response(HTTP_CODE_OK,"reset_user_password_successful")
+			return resp  
+		except Exception as e:
+			app.logger.error(e)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"reset_user_password_failed")
+			return resp
