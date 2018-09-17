@@ -1,9 +1,9 @@
 {
   "DEFAULT": 
   {
-    "KEYCLOAK_SERVER": "http://185.12.5.14:8080/auth/",
-    "KEYCLOAK_REALM": "realm01",
-    "MANAGER_USERNAME" : "admin01",
-    "MANAGER_PASSWORD" : "123"
+    "KEYCLOAK_SERVER": "http://<IP>:8080/auth/",
+    "KEYCLOAK_REALM": ,
+    "MANAGER_USERNAME" : ,
+    "MANAGER_PASSWORD" :
   }
 }
