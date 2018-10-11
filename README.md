@@ -74,6 +74,13 @@ DELETE http://[IP of API server]:5001/v1.0/clients/<id_of_client>
 
 PUT http://[IP of API server]:5001/v1.0/clients/<id_of_client>
 
+with json data
+
+{
+	"client_name": ,
+	"redirect_uris" : 
+}
+
 - Retrieve an OIDC client information
 
 GET http://[IP of API server]:5001/v1.0/clients/<id_of_client>
@@ -88,8 +95,7 @@ with json data
 	"username" : ,
 	"password" : ,
 	"firstname" : ,
-	"lastname" : ",
-	"organization" : ,
+	"lastname" : ,
 	"email" :
 }
 
