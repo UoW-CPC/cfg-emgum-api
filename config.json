@@ -1,9 +1,9 @@
 {
   "DEFAULT": 
   {
-    "KEYCLOAK_SERVER": "http://185.12.5.98:8080/auth/",
-    "KEYCLOAK_REALM": "realm01",
-    "SUPERUSER_NAME" : "admin01" ,
-    "SUPERUSER_PASSWORD" : "123"
+    "KEYCLOAK_SERVER": "http://[IP address with port or domain name of keycloak server]/auth/",
+    "KEYCLOAK_REALM": "[realm_name_here]",
+    "SUPERUSER_NAME" : "[user_name_of_admin_in_the_realm]" ,
+    "SUPERUSER_PASSWORD" : "[password_of_admin_in_the_realm]"
   }
 }
