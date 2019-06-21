@@ -194,6 +194,7 @@ user_model_update = {
 ## END - MODELS
 
 ##### RESOURCES
+### CLIENT
 class Client(Resource): 
 	def get(self,client_id):
 		auth = request.headers.get('authorization')
@@ -340,7 +341,9 @@ class Clients(Resource):
 			app.logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'register_client_failed')
 			return resp
+### END - CLIENT
 
+### TOKEN
 class Token(Resource):
 	def put(self,token): # refresh/ renew access token. Token = refresh token
 		json_body = request.json
@@ -449,8 +452,9 @@ class Tokens(Resource):
 			app.logger.error(e) 
 			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_tokens')
 			return resp
+### END - TOKEN
 
-
+### USERINFO
 class UserInfo(Resource):
 	def get(self,token): # get user information. Token = access token
 		parser = reqparse.RequestParser()
@@ -527,7 +531,9 @@ class Users(Resource):
 			app.logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'create_user_failed')
 			return resp
-	
+### END - USERINFO
+
+### USER
 class User(Resource):
 	def get(self,username): # retrieve user
 		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users"
@@ -617,43 +623,56 @@ class User(Resource):
 			app.logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"delete_user_failed")
 			return resp
+### END - USER
 
+### ENDPOINT
 class Endpoint(Resource):
 	def get(self): # return endpoint of public key
 		endpoint = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/certs"
 		epJson = {'pk_endpoint':endpoint}
 		resp = create_json_response(HTTP_CODE_OK,'endpoint_successful',additional_json=epJson)
 		return resp
-##### END - RESOURCES
+### END - ENDPOINT
 
-class UserPassword(Resource):
-	#def post(self, username): # create a new password (after user has reset password)
-	#def put(self, username): # change password
-	def delete(self, username): # reset password
-		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users/" 
+### RPT (Relying party token)
+class Rpt(Resource):
+	def post(self): # retrieve rpt token
+		json_body = request.json
+		rs_id = json_body ['resource_server_id']
+		resource = json_body ['resource_name']
+		payload = {"audience":rs_id, "permission": resource, "grant_type":"urn:ietf:params:oauth:grant-type:uma-ticket"} 
+		
+		access_token = request.headers.get('authorization')
+		headers = {"Authorization":access_token}
+
+		token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
+		if DEBUG_MODE:
+			print('RETRIEVE TOKENS')
+			print("json body: ", json_body)
+		#app.logger.info('RETRIEVE TOKENS')
+		#app.logger.info("client_id: " + client_id)
+
 		try:
-			access_token = retrieve_realm_admin_access_token()
-			headers = {'Authorization': 'Bearer ' + access_token}
+			#keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=rs_id, realm_name=KEYCLOAK_REALM, client_secret_key=rs_secret,verify=True)
+			#rpt = keycloak_openid.entitlement(access_token, rs_id)
+			r = requests.post(token_link,headers=headers,data=payload) # data is in x-www-form-urlencoded
+			response  = r.json()
 
-			search_criteria = {
-				"username" : username
-			}
-			r = requests.get(users_link,params=search_criteria,headers=headers)
-			user_id  = r.json()[0]['id']
+			if DEBUG_MODE:
+				print ("Response:",response)
 
-			reset_password_link = users_link + user_id + "/reset-password"
+			rpt = response['access_token']
 
-			temp_password = generate_passwd()
+			if DEBUG_MODE:
+				print("Tokens: ", rpt)
+			#app.logger.info("Tokens: " + tokens)
 
-			new_credentials = {
-				"value": temp_password,
-				"type": "password"
-			}
-			r = requests.put(reset_password_link,json=new_credentials,headers=headers)
 
-			resp = create_json_response(HTTP_CODE_OK,"reset_user_password_successful")
-			return resp  
-		except Exception as e:
-			app.logger.error(e)
-			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"reset_user_password_failed")
+			resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_tokens',additional_json={"rpt token":rpt})
 			return resp
+		except Exception as e:
+			app.logger.error(e) 
+			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_rpt', additional_json=response)
+			return resp
+### END - RPT
+##### END - RESOURCES
