@@ -26,6 +26,8 @@ api.add_resource(openidc.User,'/v1.0/users/<username>')
 
 api.add_resource(openidc.Endpoint,'/v1.0/endpoint')
 
+api.add_resource(openidc.Rpt,'/v1.0/rpt')
+
 #api.add_resource(openidc.UserPassword,'/v1.0/users/<username>/password')
 
 #api.add_resource(openidc.AdminClient,'/v1.0/admin/clients/<client_id>')
