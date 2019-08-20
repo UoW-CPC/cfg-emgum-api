@@ -30,3 +30,6 @@ Id,Code,Message,
 30,retrieve_client_failed, Failed to retrieve client. Please check the id of client and/or bearer token and/or check if API hostname is added as trusted host in OIDC server or not,
 31,endpoint_successful,Use the value of pk_endpoint to access the public_key for token verification.,
 32,llack_of_registration_token, Lack of registration token in headers.
+33,fail_to_get_rpt, Failed to retrieve rpt token. Please check access_token if error is "unauthorized_client".
+34,succeed_to_verify_rpt, Verify rpt token successfully!
+35,fail_to_verify_rpt, Failed to verify rpt token.

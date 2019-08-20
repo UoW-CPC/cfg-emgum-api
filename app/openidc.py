@@ -31,7 +31,7 @@ HTTP_CODE_SERVER_ERR = 500
 PASSWD_MIN_LEN = 8 # characters
 PASSWD_MAX_LEN = 16 # characters
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 ##### END - CONSTANT VALUES
 
 
@@ -456,7 +456,7 @@ class Tokens(Resource):
 
 ### USERINFO
 class UserInfo(Resource):
-	def get(self,token): # get user information. Token = access token
+	def get(self,token): # get user information. Token = access token.
 		parser = reqparse.RequestParser()
 		parser.add_argument('client_id')
 		parser.add_argument('client_secret')
@@ -540,7 +540,7 @@ class User(Resource):
 
 		try:
 			#keycloak_admin = KeycloakAdmin(server_url=KEYCLOAK_SERVER,username=config['DEFAULT']['MANAGER_USERNAME'],password=config['DEFAULT']['MANAGER_PASSWORD'],realm_name=KEYCLOAK_REALM,verify=True)
-			access_token = retrieve_realm_admin_access_token()
+			access_token = retrieve_realm_admin_access_token() #This access token is valid only if the user to whom the token is issued has role "query-users" in "realm-management' client roles. 
 			headers = {'Authorization': 'Bearer ' + access_token}
 
 			#headers = {"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJHRGF2RnlXWXlBd2tWRFBpWFFVZnFsdTZJVjhxMldXZVNRQ2praW1WS1RJIn0.eyJqdGkiOiIyNWRhNTkzMy00OTIzLTQwMTItOTdmNC1iYzVmNGZmMDYxYWEiLCJleHAiOjE1MzY4NDAwODYsIm5iZiI6MCwiaWF0IjoxNTM2ODM5Nzg2LCJpc3MiOiJodHRwOi8vMzEuMTcxLjI0NS43NDo4MDgwL2F1dGgvcmVhbG1zL3JlYWxtMDEiLCJhdWQiOiJhZG1pbi1jbGkiLCJzdWIiOiI4MjlhOWE1YS0xMzUxLTQ4ZWYtOTlkNi1hZmRlNjI3YjVmZTciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJhZG1pbi1jbGkiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIyODU5OWM4Yi1jYTllLTQyZjctYmQ3ZS1lNzE5NzUxZmZiMDgiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbXSwicmVzb3VyY2VfYWNjZXNzIjp7fSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhZG1pbjAxIn0.Mv8EoGLbDCvtqL8MJ5op1tJUKVWZeyOI2v-4_F8CuHjcp3V8hRz_kKAqaGoKiKHWm0Usf8iHtdECeAnQLYjusiNJh0IinmSjEXj0Cmi9kjHw62xfZk_I8MQtgfOaQVCSy9-cxuTSmbJoVv531TDzOojY_2KI4ul_hZ78Dtk6eKTz1RiiCpIbxnSat1NPWWCJs-wi5Xd9r8a5NmPOfSKlFKFnTT9zWVuxeGLehky-7R7wo7tovIDekJhRtmuNOyLxKzdLKxjpz7VjB_TVhjuJ7xQBKQA4ypEqL9C2K7PCPydpy-kSFEX6_dL8cDt79zFvHEytOt1Rw828PA6ZylKo-w"}
@@ -650,11 +650,12 @@ class Rpt(Resource):
 			print('RETRIEVE TOKENS')
 			print("json body: ", json_body)
 		#app.logger.info('RETRIEVE TOKENS')
-		#app.logger.info("client_id: " + client_id)
 
 		try:
-			#keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=rs_id, realm_name=KEYCLOAK_REALM, client_secret_key=rs_secret,verify=True)
-			#rpt = keycloak_openid.entitlement(access_token, rs_id)
+			#Using KeycloakOpenID is not a good option as we need to provide client_id and client_secret per request, which is not secure as only relying on access_token
+			#keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			#rpt = keycloak_openid.entitlement(access_token, resource)
+			
 			r = requests.post(token_link,headers=headers,data=payload) # data is in x-www-form-urlencoded
 			response  = r.json()
 
@@ -673,6 +674,41 @@ class Rpt(Resource):
 		except Exception as e:
 			app.logger.error(e) 
 			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_rpt', additional_json=response)
+			return resp
+		
+class RptToken(Resource):
+	def post(self,token): #introspect RPT token
+		access_token = request.headers.get('authorization')
+		headers = {"Authorization":access_token}
+		
+		json_body = request.json
+		client_id = json_body ['client_id']
+		client_secret = json_body ['client_secret']
+
+		#token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "protocol/openid-connect/token/introspect"
+		if DEBUG_MODE:
+			print('INTROSPECT RPT TOKENS')
+		#app.logger.info('INTROSPECT TOKENS')
+
+		try:	
+			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			token_rpt_info = keycloak_openid.introspect(access_token, rpt=token,token_type_hint="requesting_party_token")
+	
+			#r = requests.post(token_link,headers=headers,auth=(client_id,client_secret),data=payload) # data is in x-www-form-urlencoded
+			#response  = r.json()
+
+			if DEBUG_MODE:
+				print ("Response:",token_rpt_info)
+			#app.logger.info("Tokens: " + tokens)
+
+			if (token_rpt_info['active']):
+				resp = create_json_response(HTTP_CODE_OK,'succeed_to_verify_rpt', additional_json=token_rpt_info)
+			else:
+				resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_verify_rpt', additional_json=token_rpt_info)
+			return resp
+		except Exception as e:
+			app.logger.error(e) 
+			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_verify_rpt', additional_json=token_rpt_info)
 			return resp
 ### END - RPT
 ##### END - RESOURCES
