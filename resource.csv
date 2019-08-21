@@ -36,4 +36,3 @@ Id,Code,Message,
 36,fail_to_verify_rpt, Failed to verify rpt token.
 37,succeed_to_exchange_token, Succeed to exchange token.
 38,fail_to_exchange_token, Failed to exchange token.
-36,succe
