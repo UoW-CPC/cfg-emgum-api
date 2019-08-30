@@ -31,7 +31,7 @@ HTTP_CODE_SERVER_ERR = 500
 PASSWD_MIN_LEN = 8 # characters
 PASSWD_MAX_LEN = 16 # characters
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 ##### END - CONSTANT VALUES
 
 
@@ -418,7 +418,48 @@ class Token(Resource):
 			app.logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'invalid_token')
 			return resp
+	def post(self,token):  # exchange token
+		grant_type = "urn:ietf:params:oauth:grant-type:token-exchange"
+		requested_token_type = "urn:ietf:params:oauth:token-type:refresh_token"
+		
+		json_body = request.json
+		
+		try:
+			client_id = json_body ['client_id']
+			client_secret = json_body ['client_secret']
+		except Exception as e:
+			app.logger.error(e) 
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_exchange_token', additional_json={"error" : "invalid json parameters"})
+			return resp
+		
+		try: # if "scope" is included in the request
+			scope = json_body ['scope']
+			payload = {"client_id":client_id, "client_secret": client_secret, "scope": scope,"grant_type":grant_type, "requested_token_type":requested_token_type,"subject_token":token} 
+		except Exception as e:
+			payload = {"client_id":client_id, "client_secret": client_secret, "grant_type":grant_type, "requested_token_type":requested_token_type,"subject_token":token} 
 
+		token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
+		if DEBUG_MODE:
+			print('EXCHANGE TOKENS')
+			print("json body: ", json_body)
+		#app.logger.info('RETRIEVE TOKENS')
+
+		try:
+			r = requests.post(token_link,data=payload) # data is in x-www-form-urlencoded
+			response  = r.json()
+
+			if DEBUG_MODE:
+				print ("Response:",response)
+			if (r.status_code == HTTP_CODE_OK):
+				resp = create_json_response(HTTP_CODE_OK,'succeed_to_exchange_token', additional_json=response)
+			else:
+				resp = create_json_response(r.status_code,'fail_to_exchange_token',additional_json=response)
+			return resp
+		except Exception as e:
+			app.logger.error(e) 
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_exchange_token', additional_json=response)
+			return resp
+		
 class Tokens(Resource):
 	def post(self): #  retrieve access and refresh token from user's username and password. Only clent allowed for direct access grants could request
 		json_body = request.json
@@ -641,12 +682,18 @@ class Rpt(Resource):
 		try:
 			rs_id = json_body ['resource_server_id']
 			resource = json_body ['resource_name']
+			scope = json_body['scope']
 		except Exception as e:
 			app.logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json={"error" : "invalid json parameters"})
 			return resp
 		
-		payload = {"audience":rs_id, "permission": resource, "grant_type":"urn:ietf:params:oauth:grant-type:uma-ticket"} 
+		if scope == "" :
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt',additional_json={"error" : "invalid json parameters"})
+			return resp
+		
+		rs_scope = resource + "#" + scope
+		payload = {"audience":rs_id, "permission": rs_scope, "grant_type":"urn:ietf:params:oauth:grant-type:uma-ticket"} 
 		
 		access_token = request.headers.get('authorization')
 		headers = {"Authorization":access_token}
@@ -667,6 +714,10 @@ class Rpt(Resource):
 
 			if DEBUG_MODE:
 				print ("Response:",response)
+				
+			if r.status_code == HTTP_CODE_UNAUTHORIZED:
+				resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_rpt',additional_json=response)
+				return resp
 
 			rpt = response['access_token']
 
@@ -712,58 +763,11 @@ class RptToken(Resource):
 			if (token_rpt_info['active']):
 				resp = create_json_response(HTTP_CODE_OK,'succeed_to_verify_rpt', additional_json=token_rpt_info)
 			else:
-				resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_verify_rpt', additional_json=token_rpt_info)
+				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_verify_rpt', additional_json=token_rpt_info)
 			return resp
 		except Exception as e:
 			app.logger.error(e) 
-			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_verify_rpt', additional_json=token_rpt_info)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_verify_rpt', additional_json={"error":"Invalid client_id/ client_secret"})
 			return resp
 ### END - RPT
-
-### Exchanged token
-class ExchangedToken(Resource):
-	def post(self):
-		grant_type = "urn:ietf:params:oauth:grant-type:token-exchange"
-		requested_token_type = "urn:ietf:params:oauth:token-type:refresh_token"
-		
-		json_body = request.json
-		
-		try:
-			client_id = json_body ['client_id']
-			client_secret = json_body ['client_secret']
-			token = json_body ['token']
-		except Exception as e:
-			app.logger.error(e) 
-			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_exchange_token', additional_json={"error" : "invalid json parameters"})
-			return resp
-		
-		try: # if "scope" is included in the request
-			scope = json_body ['scope']
-			payload = {"client_id":client_id, "client_secret": client_secret, "scope": scope,"grant_type":grant_type, "requested_token_type":requested_token_type,"subject_token":token} 
-		except Exception as e:
-			payload = {"client_id":client_id, "client_secret": client_secret, "grant_type":grant_type, "requested_token_type":requested_token_type,"subject_token":token} 
-
-		token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
-		if DEBUG_MODE:
-			print('EXCHANGE TOKENS')
-			print("json body: ", json_body)
-		#app.logger.info('RETRIEVE TOKENS')
-
-		try:
-			r = requests.post(token_link,data=payload) # data is in x-www-form-urlencoded
-			response  = r.json()
-
-			if DEBUG_MODE:
-				print ("Response:",response)
-			if (r.status_code == HTTP_CODE_OK):
-				resp = create_json_response(HTTP_CODE_OK,'succeed_to_exchange_token', additional_json=response)
-			else:
-				resp = create_json_response(r.status_code,'fail_to_exchange_token',additional_json=response)
-			return resp
-		except Exception as e:
-			app.logger.error(e) 
-			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_exchange_token', additional_json=response)
-			return resp
-### END - Exchanged token
-	
 ##### END - RESOURCES
