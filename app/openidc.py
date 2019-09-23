@@ -31,7 +31,7 @@ HTTP_CODE_SERVER_ERR = 500
 PASSWD_MIN_LEN = 8 # characters
 PASSWD_MAX_LEN = 16 # characters
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 ##### END - CONSTANT VALUES
 
 
@@ -45,8 +45,8 @@ with open(json_path,'r') as f:
 KEYCLOAK_SERVER = config['DEFAULT']['KEYCLOAK_SERVER']
 KEYCLOAK_REALM = config['DEFAULT']['KEYCLOAK_REALM']
 
-SUPERUSER_NAME = config['DEFAULT']['SUPERUSER_NAME']
-SUPERUSER_PASSWORD = config['DEFAULT']['SUPERUSER_PASSWORD']
+#SUPERUSER_NAME = config['DEFAULT']['SUPERUSER_NAME']
+#SUPERUSER_PASSWORD = config['DEFAULT']['SUPERUSER_PASSWORD']
 
 # import the resource of all messages
 csv_path = os.path.join(cfg_path, 'resource.csv')
@@ -69,7 +69,7 @@ def create_json_response(http_code, message_label, info_for_developer="", additi
 	return resp
 
 
-def retrieve_realm_admin_access_token():
+"""def retrieve_realm_admin_access_token():
 	request_token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
 
 	payload = {"client_id" : "admin-cli",
@@ -86,7 +86,7 @@ def retrieve_realm_admin_access_token():
 		return access_token
 	except Exception as e:
 		app.logger.error(e)
-		raise e
+		raise e"""
 
 def generate_passwd():
 	"""[summary]
@@ -461,7 +461,7 @@ class Token(Resource):
 			return resp
 		
 class Tokens(Resource):
-	def post(self): #  retrieve access and refresh token from user's username and password. Only clent allowed for direct access grants could request
+	def post(self): #  retrieve access and refresh token from user's username and password. Only client allowed for direct access grants could request
 		json_body = request.json
 		username = json_body ['username']
 		password = json_body ['password']
@@ -529,6 +529,8 @@ class Users(Resource):
 		firstname = json_body ['firstname']
 		lastname = json_body ['lastname']
 		#organization = json_body ['organization']
+		
+		access_token = request.headers.get('authorization')
 
 		if DEBUG_MODE:
 			print('\nCREATE USER')
@@ -545,14 +547,14 @@ class Users(Resource):
 				"credentials": [{"value": password,"type": "password",}]
 			}
 
-			access_token = retrieve_realm_admin_access_token()
+			#access_token = retrieve_realm_admin_access_token()
 
 			if DEBUG_MODE:
 				print('super user access token: ', access_token)
 
 			create_user_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users"
 			
-			headers = {'Authorization': 'Bearer ' + access_token}
+			headers = {'Authorization': access_token}
 
 			r = requests.post(create_user_link,json=new_user,headers=headers)
 
@@ -574,15 +576,16 @@ class Users(Resource):
 			return resp
 ### END - USERINFO
 
-### USER
+### USER : these APIs work only if the provided access token is of a user with user_manager role
 class User(Resource):
 	def get(self,username): # retrieve user
 		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users"
+		access_token = request.headers.get('authorization')
 
 		try:
 			#keycloak_admin = KeycloakAdmin(server_url=KEYCLOAK_SERVER,username=config['DEFAULT']['MANAGER_USERNAME'],password=config['DEFAULT']['MANAGER_PASSWORD'],realm_name=KEYCLOAK_REALM,verify=True)
-			access_token = retrieve_realm_admin_access_token() #This access token is valid only if the user to whom the token is issued has role "query-users" in "realm-management' client roles. 
-			headers = {'Authorization': 'Bearer ' + access_token}
+			#access_token = retrieve_realm_admin_access_token() #This access token is valid only if the user to whom the token is issued has role "query-users" in "realm-management' client roles. 
+			headers = {'Authorization': access_token}
 
 			#headers = {"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJHRGF2RnlXWXlBd2tWRFBpWFFVZnFsdTZJVjhxMldXZVNRQ2praW1WS1RJIn0.eyJqdGkiOiIyNWRhNTkzMy00OTIzLTQwMTItOTdmNC1iYzVmNGZmMDYxYWEiLCJleHAiOjE1MzY4NDAwODYsIm5iZiI6MCwiaWF0IjoxNTM2ODM5Nzg2LCJpc3MiOiJodHRwOi8vMzEuMTcxLjI0NS43NDo4MDgwL2F1dGgvcmVhbG1zL3JlYWxtMDEiLCJhdWQiOiJhZG1pbi1jbGkiLCJzdWIiOiI4MjlhOWE1YS0xMzUxLTQ4ZWYtOTlkNi1hZmRlNjI3YjVmZTciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJhZG1pbi1jbGkiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIyODU5OWM4Yi1jYTllLTQyZjctYmQ3ZS1lNzE5NzUxZmZiMDgiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbXSwicmVzb3VyY2VfYWNjZXNzIjp7fSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhZG1pbjAxIn0.Mv8EoGLbDCvtqL8MJ5op1tJUKVWZeyOI2v-4_F8CuHjcp3V8hRz_kKAqaGoKiKHWm0Usf8iHtdECeAnQLYjusiNJh0IinmSjEXj0Cmi9kjHw62xfZk_I8MQtgfOaQVCSy9-cxuTSmbJoVv531TDzOojY_2KI4ul_hZ78Dtk6eKTz1RiiCpIbxnSat1NPWWCJs-wi5Xd9r8a5NmPOfSKlFKFnTT9zWVuxeGLehky-7R7wo7tovIDekJhRtmuNOyLxKzdLKxjpz7VjB_TVhjuJ7xQBKQA4ypEqL9C2K7PCPydpy-kSFEX6_dL8cDt79zFvHEytOt1Rw828PA6ZylKo-w"}
 			search_criteria = {
@@ -615,15 +618,17 @@ class User(Resource):
 
 		new_user_info = dict(marshal(json_body,user_model_update))
 		
+		access_token = request.headers.get('authorization')
+		
 		if DEBUG_MODE:
 			print('\nUPDATE USER')
 			print('Json body:', json_body)
 			print('New user info: ', new_user_info)
-
+			print('access token:', access_token)	
 
 		try:
-			access_token = retrieve_realm_admin_access_token()
-			headers = {'Authorization': 'Bearer ' + access_token}
+			#access_token = retrieve_realm_admin_access_token()
+			headers = {'Authorization': access_token}
 
 			search_criteria = {
 				"username" : username
@@ -644,9 +649,10 @@ class User(Resource):
 			return resp
 	def delete(self,username): # delete user
 		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users/" 
+		access_token = request.headers.get('authorization')
 		try:
-			access_token = retrieve_realm_admin_access_token()
-			headers = {'Authorization': 'Bearer ' + access_token}
+			#access_token = retrieve_realm_admin_access_token()
+			headers = {'Authorization': access_token}
 
 			search_criteria = {
 				"username" : username
@@ -696,12 +702,14 @@ class Rpt(Resource):
 		payload = {"audience":rs_id, "permission": rs_scope, "grant_type":"urn:ietf:params:oauth:grant-type:uma-ticket"} 
 		
 		access_token = request.headers.get('authorization')
-		headers = {"Authorization":access_token}
+		headers = {"Authorization":  access_token}
 
 		token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
 		if DEBUG_MODE:
-			print('RETRIEVE TOKENS')
+			print('RETRIEVE RPT TOKEN')
 			print("json body: ", json_body)
+			print("Access token:", access_token)
+			
 		#app.logger.info('RETRIEVE TOKENS')
 
 		try:
@@ -730,7 +738,8 @@ class Rpt(Resource):
 			return resp
 		except Exception as e:
 			app.logger.error(e) 
-			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json=response)
+			#resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json=response)
+			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json={"error description":"Please view the log file"})
 			return resp
 		
 class RptToken(Resource):
