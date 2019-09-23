@@ -6,10 +6,10 @@ import os
 import json
 
 http_code_ok = 200
-#http_code_created = 201
+http_code_created = 201
 #http_code_bad_request = 404
-#API_URL = "http://127.0.0.1:5000/v1.0"
-API_URL = "http://178.22.68.132/v1.0"
+API_URL = "http://127.0.0.1:5000/v1.0"
+#API_URL = "http://178.22.68.132/v1.0"
 
 class cfg_test_lib(object):
 
@@ -99,6 +99,13 @@ class cfg_test_lib(object):
         json_data = json.loads(res.text)
         self._status = json_data['code']
 
+    def exchange_token(self, received_token, client_id, client_secret):
+        url     = API_URL + '/tokens/' + received_token
+        payload = {"client_id": client_id, "client_secret": client_secret}
+        res = requests.post(url, json=payload)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        
     def retrieve_user_info(self, access_token, client_id, client_secret):
         url     = API_URL + '/userinfo/' + access_token
         payload = {"client_id": client_id, "client_secret": client_secret}
@@ -106,30 +113,50 @@ class cfg_test_lib(object):
         json_data = json.loads(res.text)
         self._status = json_data['code']
         
-    def add_a_user(self, username, password, firstname, lastname, email):
+    def add_a_user(self, access_token, username, password, firstname, lastname, email):
         url     = API_URL + '/users'
         payload = {"username": username, "password": password, "firstname": firstname, "lastname": lastname, "email": email}
-        res = requests.post(url, json=payload)
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.post(url, json=payload, headers=header)
         json_data = json.loads(res.text)
         self._status = json_data['code']
 
-    def retrieve_a_user(self, username):
+    def retrieve_a_user(self,  access_token, username):
         url     = API_URL + '/users/' + username
-        res = requests.get(url)
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.get(url, headers=header)
         json_data = json.loads(res.text)
         self._status = json_data['code']
         if self._status==http_code_ok:
             self._data = json_data['firstName']
 
-    def delete_a_user(self, username):
+    def delete_a_user(self, access_token,  username):
         url     = API_URL + '/users/' + username
-        res = requests.delete(url)
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.delete(url, headers=header)
         json_data = json.loads(res.text)
         self._status = json_data['code']
 
-    def update_a_user(self, username, firstname, lastname):
+    def update_a_user(self,  access_token, username, firstname, lastname):
         url     = API_URL + '/users/' + username
         payload = {"firstname": firstname, "lastname": lastname}
-        res = requests.put(url,json=payload)
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.put(url,json=payload, headers=header)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        
+    def retrieve_rpt(self, access_token, resource_server, resource, scope):
+        url     = API_URL + "/rpt"
+        header = {'Authorization': 'Bearer ' + access_token}
+        payload = {'resource_server_id': resource_server, 'resource_name': resource, 'scope': scope}
+        res = requests.post(url,json=payload, headers=header)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        return json_data["rpt token"]
+        
+    def introspect_rpt(self, rpt, client_id, client_secret):
+        url     = API_URL + "/rpt/" + rpt
+        payload = {'client_id': client_id, 'client_secret': client_secret}
+        res = requests.post(url,json=payload)
         json_data = json.loads(res.text)
         self._status = json_data['code']
