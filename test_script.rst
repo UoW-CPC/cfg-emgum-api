@@ -67,6 +67,18 @@
 		Verify token     ${new_access_token}    ${client_id}     ${client_secret}
 		Status should be 	  ${http_code_ok}
 
+	A client can exchange a received token to achieve its own token
+		Exchange a token    ${new_access_token}    ${another_client_id}     ${another_client_secret}
+		Status should be 	  ${http_code_ok}
+		
+	Client can retrieve a rpt token
+		${rpt} =    Get rpt    ${new_access_token}   ${resource_server}   ${resource}    ${scope}
+		Set Global Variable    ${rpt}
+		Status should be 	  ${http_code_ok}
+		
+	Client can verify the rpt token
+		Verify rpt    ${rpt}   ${client_id}   ${client_secret} 
+		Status should be 	  ${http_code_ok}
 	
 	Client can send log out request to Keycloak
 		Log out    ${new_refresh_token}    ${client_id}     ${client_secret}
@@ -75,33 +87,35 @@
 	Client cannot verify the access token after log out
 		Verify token     ${new_access_token}    ${client_id}     ${client_secret}
 		Status should be 	  ${http_code_bad_request}
-
-	Super user can add a new user
-		Add user    ${new_username}       ${new_password}    ${firstname}    ${lastname}    ${email}
+		
+	User who is assigned 'manager-users' role can add a new user
+	    ${manager_access_token}    ${manager_refresh_token} =    Retrieve tokens    ${client_id}     ${client_secret}     ${manager_user_name}    ${manager_password}
+		Set Global Variable    ${manager_access_token}
+		Add user    ${manager_access_token}    ${new_username}     ${new_password}    ${firstname}    ${lastname}    ${email}
 		Status should be     ${http_code_created}
 
-	Super user can retrieve a user
-		Retrieve user    ${new_username}
+	User who is assigned 'manager-users' role can retrieve a user
+		Retrieve user    ${manager_access_token}    ${new_username}
 		Status should be     ${http_code_ok}
 		Data should be    ${firstname}
 
-	Super user can update a user
-		Update user    ${new_username}    ${firstname_update}    ${lastname_update}
+	User who is assigned 'manager-users' role can update a user
+		Update user    ${manager_access_token}    ${new_username}    ${firstname_update}    ${lastname_update}
 		Status should be     ${http_code_ok}
-		Retrieve user    ${new_username}
+		Retrieve user    ${manager_access_token}    ${new_username}
 		Data should be    ${firstname_update}
 
-	Super user can delete a user
-		Delete user    ${new_username}
+	User who is assigned 'manager-users' role can delete a user
+		Delete user    ${manager_access_token}    ${new_username}
 		Status should be    ${http_code_ok}
-		Retrieve user    ${new_username}
+		Retrieve user    ${manager_access_token}    ${new_username}
 		Status should be    ${http_code_bad_request}
 
 	*** Variables ***
-	${initial_reg_token}            eyJhbGciOiJSUzI1NiIsImtpZCIgOiAiR0RhdkZ5V1l5QXdrVkRQaVhRVWZxbHU2SVY4cTJXV2VTUUNqa2ltVktUSSJ9.eyJqdGkiOiIwMTA3Yzg0Mi04YjJjLTRhMjUtODFiMC04MDM1YTY0M2Q1ODAiLCJleHAiOjE1NDAwMzYwOTYsIm5iZiI6MCwiaWF0IjoxNTM5MTcyMDk2LCJpc3MiOiJodHRwOi8vMTg1LjEyLjUuOTg6ODA4MC9hdXRoL3JlYWxtcy9yZWFsbTAxIiwiYXVkIjoiaHR0cDovLzE4NS4xMi41Ljk4OjgwODAvYXV0aC9yZWFsbXMvcmVhbG0wMSIsInR5cCI6IkluaXRpYWxBY2Nlc3NUb2tlbiJ9.GeAKeu1UzptskFtZI00jw3U4lvkxHulj6Z6QXIsC4wtamRMyDiSz6Umv3cvuxyUBHV0u18pGRyTwnxB7hBhaibKFfJ-mSxEOo3Ox5Gl30fbWeU4mV_KDdpbro-X4av-mDYXCLmHANl-bZbGleKpEtgU8GDDanDn2B9pjMv1iNm54zSAGboU1vtrO7sn_-RHx-IerEXDdkMjXJLKUw_AsKPeUP1CVRNPSqoVN6zbBo3srt2ZEr0tcGHPUTlwuAQ29vlRw6QXTqtbmbTL0LlcajrnqRsZQHyBKQKv3vepReTY69_RvcSErb9t19Sbw_EfMiDpG3ISKlBk3zubyVKReRA
+	${initial_reg_token}    eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJlZDQ1ZjlhOC01ODE0LTQyMTUtYTY1Ny1mMTdkNGUzOWUxNWEifQ.eyJqdGkiOiI5ODMwMjQyOS0xMmU5LTQzNWQtYjk0Ny1kNGVhMWVjMTRiNjAiLCJleHAiOjE1NzAxMjU0NDcsIm5iZiI6MCwiaWF0IjoxNTY5MjYxNDQ3LCJpc3MiOiJodHRwOi8vbG9jYWxob3N0L2F1dGgvcmVhbG1zL2NmZyIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3QvYXV0aC9yZWFsbXMvY2ZnIiwidHlwIjoiSW5pdGlhbEFjY2Vzc1Rva2VuIn0.uRj1plILCcocH7HyjjZzXAes79BdIoNP1NY1fvPWzRI    
 	${invalid_reg_token}           '123'
-	${client_name}              app11a
-	${new_client_name}          app11b
+	${client_name}              app1
+	${new_client_name}          app2
 	@{redirect_uris}             localhost1    localhost2
 	${http_code_not_found}       404
 	${http_code_created}		 201
@@ -111,18 +125,26 @@
 	${threshold}				 2
 	${invalid_threshold}		 0   
 	@{new_redirect_uris}         localhost3	   localhost4
-	${user_name}                 user01
+	${user_name}                 alice
 	${password}                  123
-	${client_id}              app01
-	${client_secret}          e532ea62-2743-4cea-89b3-ffc58664f739
-	${new_username}                user11
-	${firstname}               user11fn
-	${lastname}                user11ln
-	${new_password}                user123
-	${email}                   user11@mail.com
-	${firstname_update}        user11fn_update
-	${lastname_update}         user11ln_update
+	${client_id}              dtapp
+	${client_secret}          26a4fc6a-e06e-4e74-b7b4-296e0489f943
+	${another_client_id}     EMGREPO
+	${another_client_secret}    e19770db-6fe3-468c-a332-bf538e340b5e
+	${new_username}                peter
+	${firstname}               Pete
+	${lastname}                Whit
+	${new_password}                peter123
+	${email}                   peter@mail.com
+	${firstname_update}        'Peter'
+	${lastname_update}        'Pan'
 	${invalid_client_id}       'abc'
+	${super_user_token}      agagaga
+	${resource_server}    EMGREPO   
+	${resource}    artefacts
+	${scope}    delete
+	${manager_user_name}    cfg_manager
+	${manager_password}    manager
 
 	*** Keywords ***
 	Dynamically register client
@@ -152,7 +174,11 @@
 		[Arguments]     ${token}    ${client_id}     ${client_secret}
 		${output} =    renew_access_token    ${token}    ${client_id}     ${client_secret}
 		[return]    ${output}
-
+	
+	Exchange a token
+		[Arguments]    ${received_token}   ${client_id}   ${client_secret}
+		exchange_token    ${received_token}   ${client_id}   ${client_secret}	
+		
 	Verify token
 		[Arguments]     ${token}    ${client_id}     ${client_secret}
 		introspect_access_token        ${token}    ${client_id}     ${client_secret}
@@ -162,17 +188,26 @@
 		delete_tokens    ${token}    ${client_id}     ${client_secret}
 
 	Add user
-		[Arguments]     ${username}       ${password}    ${firstname}    ${lastname}    ${email}
-		add_a_user    ${username}       ${password}    ${firstname}    ${lastname}    ${email}
+		[Arguments]     ${super_user_token}    ${username}       ${password}    ${firstname}    ${lastname}    ${email}
+		add_a_user     ${super_user_token}    ${username}       ${password}    ${firstname}    ${lastname}    ${email}
 
 	Retrieve user
-		[Arguments]    ${username}
-		retrieve_a_user    ${username}
+		[Arguments]    ${super_user_token}    ${username}
+		retrieve_a_user    ${super_user_token}    ${username}
 
 	Delete user
-		[Arguments]    ${username}
-		delete_a_user    ${username}
+		[Arguments]    ${super_user_token}     ${username}
+		delete_a_user   ${super_user_token}    ${username}
 
 	Update user
-		[Arguments]    ${username}    ${firstname}    ${lastname}
-		update_a_user    ${username}    ${firstname}    ${lastname}
+		[Arguments]    ${super_user_token}    ${username}    ${firstname}    ${lastname}
+		update_a_user    ${super_user_token}     ${username}    ${firstname}    ${lastname}
+		
+	Get rpt
+		[Arguments]    ${access_token}   ${resource_server}   ${resource}    ${scope}
+		${output} =    retrieve_rpt    ${access_token}   ${resource_server}   ${resource}    ${scope}
+		[return]    ${output}	
+
+	Verify rpt
+		[Arguments]    ${rpt}   ${client_id}   ${client_secret}
+		introspect_rpt    ${rpt}   ${client_id}   ${client_secret}
