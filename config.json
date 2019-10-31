@@ -1,8 +1,0 @@
-{
-  "DEFAULT": 
-  {
-    "KEYCLOAK_SERVER": "http://[IP address with port or domain name of keycloak server]/auth/",
-    "KEYCLOAK_REALM": "[realm_name_here]",
-    "LOG_FILE" : "[path of log file]"
-  }
-}

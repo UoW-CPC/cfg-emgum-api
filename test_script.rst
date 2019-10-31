@@ -112,10 +112,10 @@
 		Status should be    ${http_code_bad_request}
 
 	*** Variables ***
-	${initial_reg_token}    eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJlZDQ1ZjlhOC01ODE0LTQyMTUtYTY1Ny1mMTdkNGUzOWUxNWEifQ.eyJqdGkiOiI5ODMwMjQyOS0xMmU5LTQzNWQtYjk0Ny1kNGVhMWVjMTRiNjAiLCJleHAiOjE1NzAxMjU0NDcsIm5iZiI6MCwiaWF0IjoxNTY5MjYxNDQ3LCJpc3MiOiJodHRwOi8vbG9jYWxob3N0L2F1dGgvcmVhbG1zL2NmZyIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3QvYXV0aC9yZWFsbXMvY2ZnIiwidHlwIjoiSW5pdGlhbEFjY2Vzc1Rva2VuIn0.uRj1plILCcocH7HyjjZzXAes79BdIoNP1NY1fvPWzRI    
+	${initial_reg_token}    eyJhbGciOiJSUzI1NiIsImtpZCIgOiAiOHVSb0NZNHJYcG5FYk9VNjc4aU5BVGl3NVlSQ29kaVZINmQzUXZHX0pQdyJ9.eyJqdGkiOiI3M2IxMTUyNy0xMGI0LTRhMjUtYWUxNS00ZjQ2ZDA1ZGQ0ZTMiLCJleHAiOjE1NzI3MjA2NjMsIm5iZiI6MCwiaWF0IjoxNTcyNDYxNDYzLCJpc3MiOiJodHRwOi8vMTYxLjc0LjI2LjE1NC9hdXRoL3JlYWxtcy9jZmciLCJhdWQiOiJodHRwOi8vMTYxLjc0LjI2LjE1NC9hdXRoL3JlYWxtcy9jZmciLCJ0eXAiOiJJbml0aWFsQWNjZXNzVG9rZW4ifQ.BW-QCnsfb0-0PiOJm7_Gb2verIoUupjc7LgWsbMCag9UXHHhd0DmiBTwbIstszDWcKCkLSj3dDD-FSGW4f4bU1IPYBZLG9ILmFNpgSjDNTytFOoEgxg1Semv17aNh4E8H6qi5B6Nj6eIrNeqJ74A09ZweZKPwAdst4XHrIBYAJboSGaMWPWVibRNE0zr1TrNxDIqAaATgqu8Y_-IU3GjoGNdan3-HS3TMPR1V57EZvHrpc-xudndF8RYlla_OYThQTSY87OYnCO9JQfCDPK9tUe8CaDhSywrfJORJReQq2I8ctUAzwdNGh9UoD451HhGHeq5hSyEGIWO7fwwXBMSPw    
 	${invalid_reg_token}           '123'
-	${client_name}              app1
-	${new_client_name}          app2
+	${client_name}              app11
+	${new_client_name}          app21
 	@{redirect_uris}             localhost1    localhost2
 	${http_code_not_found}       404
 	${http_code_created}		 201
@@ -125,12 +125,12 @@
 	${threshold}				 2
 	${invalid_threshold}		 0   
 	@{new_redirect_uris}         localhost3	   localhost4
-	${user_name}                 alice
-	${password}                  123
+	${user_name}                 au
+	${password}                  au
 	${client_id}              dtapp
-	${client_secret}          26a4fc6a-e06e-4e74-b7b4-296e0489f943
-	${another_client_id}     EMGREPO
-	${another_client_secret}    e19770db-6fe3-468c-a332-bf538e340b5e
+	${client_secret}          d3575266-5180-4d71-ad25-7cd785cd42f4
+	${another_client_id}     repo
+	${another_client_secret}    f00f6c82-150e-4825-bcfd-ce9e97219add
 	${new_username}                peter
 	${firstname}               Pete
 	${lastname}                Whit
@@ -140,11 +140,11 @@
 	${lastname_update}        'Pan'
 	${invalid_client_id}       'abc'
 	${super_user_token}      agagaga
-	${resource_server}    EMGREPO   
+	${resource_server}    repo   
 	${resource}    artefacts
 	${scope}    delete
-	${manager_user_name}    cfg_manager
-	${manager_password}    manager
+	${manager_user_name}    cfgmanager
+	${manager_password}    cfgmanager
 
 	*** Keywords ***
 	Dynamically register client

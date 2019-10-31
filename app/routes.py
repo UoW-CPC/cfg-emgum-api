@@ -1,5 +1,6 @@
 from app import app, openidc
 from flask_restful import Api
+from parameters import emgum_api_url_context
 
 def index():
 	"""[summary]
@@ -7,27 +8,27 @@ def index():
 	[description]
 	This function is only for testing if the web service is in operating
 	"""
-	return "Hello, this is CFGUM API server."
+	return "Hello, this is EMGUM API server."
  
 ##### Index
-app.add_url_rule('/v1.0/','index',index)
+app.add_url_rule(emgum_api_url_context,'index',index)
 
 api = Api(app)
-api.add_resource(openidc.Client,'/v1.0/clients/<client_id>')
-api.add_resource(openidc.Clients,'/v1.0/clients')
+api.add_resource(openidc.Client,emgum_api_url_context + 'clients/<client_id>')
+api.add_resource(openidc.Clients,emgum_api_url_context + 'clients')
 
-api.add_resource(openidc.Token,'/v1.0/tokens/<token>')
-api.add_resource(openidc.Tokens,'/v1.0/tokens')
+api.add_resource(openidc.Token,emgum_api_url_context + 'tokens/<token>')
+api.add_resource(openidc.Tokens,emgum_api_url_context + 'tokens')
 
-api.add_resource(openidc.UserInfo,'/v1.0/userinfo/<token>')
+api.add_resource(openidc.UserInfo,emgum_api_url_context + 'userinfo/<token>')
 
-api.add_resource(openidc.Users,'/v1.0/users')
-api.add_resource(openidc.User,'/v1.0/users/<username>')
+api.add_resource(openidc.Users,emgum_api_url_context + 'users')
+api.add_resource(openidc.User,emgum_api_url_context + 'users/<username>')
 
-api.add_resource(openidc.Endpoint,'/v1.0/endpoint')
+api.add_resource(openidc.Endpoint,emgum_api_url_context + 'endpoint')
 
-api.add_resource(openidc.Rpt,'/v1.0/rpt')
-api.add_resource(openidc.RptToken,'/v1.0/rpt/<token>')
+api.add_resource(openidc.Rpt,emgum_api_url_context + 'rpt')
+api.add_resource(openidc.RptToken,emgum_api_url_context + 'rpt/<token>')
 
 #api.add_resource(openidc.ExchangedToken,'/v1.0/tokens/exchange')
 

@@ -9,10 +9,12 @@ import json
 import csv
 import string
 import requests
+import logging
 #import jsonurl
 from app import app
 import random
 from random import randint
+from parameters import keycloak_server, keycloak_realm
 
 ##### CONSTANT VALUES
 # http codes
@@ -34,19 +36,10 @@ PASSWD_MAX_LEN = 16 # characters
 DEBUG_MODE = True
 ##### END - CONSTANT VALUES
 
+logger = logging.getLogger(__name__)
 
 ##### GLOBAL CONFIGURATION AND VARIABLES
-# Loading configuration from config.json file
 cfg_path = os.path.abspath(os.path.join(os.path.dirname(__file__),".."))
-json_path = os.path.join(cfg_path, 'config.json')
-with open(json_path,'r') as f:
-	config = json.load(f)
-
-KEYCLOAK_SERVER = config['DEFAULT']['KEYCLOAK_SERVER']
-KEYCLOAK_REALM = config['DEFAULT']['KEYCLOAK_REALM']
-
-#SUPERUSER_NAME = config['DEFAULT']['SUPERUSER_NAME']
-#SUPERUSER_PASSWORD = config['DEFAULT']['SUPERUSER_PASSWORD']
 
 # import the resource of all messages
 csv_path = os.path.join(cfg_path, 'resource.csv')
@@ -67,26 +60,6 @@ def create_json_response(http_code, message_label, info_for_developer="", additi
 	js = json.dumps(data)
 	resp = Response(js, status=http_code, mimetype='application/json')
 	return resp
-
-
-"""def retrieve_realm_admin_access_token():
-	request_token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
-
-	payload = {"client_id" : "admin-cli",
-		"username" : SUPERUSER_NAME,
-		"password" : SUPERUSER_PASSWORD,
-		"grant_type" : "password"}
-
-	try:	
-		r = requests.post(request_token_link,data=payload) # data is in x-www-form-urlencoded
-		response  = r.json()
-
-		access_token = response['access_token']
-
-		return access_token
-	except Exception as e:
-		app.logger.error(e)
-		raise e"""
 
 def generate_passwd():
 	"""[summary]
@@ -198,12 +171,8 @@ user_model_update = {
 class Client(Resource): 
 	def get(self,client_id):
 		auth = request.headers.get('authorization')
-		#app.logger.error(auth)
-		#auth = request.headers
 		headers = {"Authorization":auth}
-		#token = dict(request.headers)['Authorization']
-		#headers = {"Authorization":token} # create headers
-		clients_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/clients-registrations/openid-connect/" + client_id
+		clients_link = keycloak_server + "realms/" + keycloak_realm + "/clients-registrations/openid-connect/" + client_id
 
 		if DEBUG_MODE:
 			print("RETRIEVE A CLIENT")
@@ -227,7 +196,7 @@ class Client(Resource):
 			resp = create_json_response(HTTP_CODE_OK,'retrieve_client_successful', additional_json=client)
 			return resp	
 		except Exception as e:
-			app.logger.error(e)
+			logger.error(e)
 			if(received_response):
 				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'retrieve_client_failed', additional_json = client)
 			else:
@@ -240,9 +209,8 @@ class Client(Resource):
 		
 		auth = request.headers.get('authorization')
 		headers = {"Authorization":auth}
-		#headers = {"Authorization":dict(request.headers)['Authorization']} # create headers
-		
-		clients_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/clients-registrations/openid-connect/" + client_id
+				
+		clients_link = keycloak_server + "realms/" + keycloak_realm + "/clients-registrations/openid-connect/" + client_id
 		
 		json_body.update({'client_id' : client_id}) # Keycloak REST API requires client_id in json_body; therefore, we add this information here		
 		
@@ -271,16 +239,16 @@ class Client(Resource):
 
 			return resp
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_update_client')
 			return resp
 
 	def delete(self,client_id):
 		auth = request.headers.get('authorization')
 		headers = {"Authorization":auth}
-		#headers = {"Authorization":dict(request.headers)['Authorization']} # create headers
+		
 
-		clients_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/clients-registrations/openid-connect/" + client_id
+		clients_link = keycloak_server + "realms/" + keycloak_realm + "/clients-registrations/openid-connect/" + client_id
 
 		if DEBUG_MODE:
 			print("DELETE CLIENT")
@@ -293,7 +261,7 @@ class Client(Resource):
 			resp = create_json_response(HTTP_CODE_OK,'delete_client_successful')
 			return resp
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'delete_client_failed')
 			return resp
 
@@ -308,15 +276,12 @@ class Clients(Resource):
 		'''
 		json_body = request.json # json_body should be {'client_name' : name_of_application_registering_to_keycloak, 'redirect_uris' : list of redirect uris}
 
-		#headers = {"Authorization":"Bearer <bearer token granted by keycloak server>"}
-
-
 		auth = request.headers.get('authorization')
-		#headers = {"Authorization":dict(request.headers)['Authorization']}
 		headers = {"Authorization":auth}
 		#r = "http://<IP address of keycloak server>:8080/auth/realms/<realm name>/clients-registrations/openid-connect"
-		request_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/clients-registrations/openid-connect"
-		
+		request_link = keycloak_server + "realms/" + keycloak_realm + "/clients-registrations/openid-connect"
+		logger.info (request_link)
+		logger.info (headers)
 		if DEBUG_MODE :
 			print("CREATE CLIENT")
 			print("request link: ",request_link)
@@ -338,7 +303,7 @@ class Clients(Resource):
 				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'register_client_failed',additional_json=response)
 			return resp
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'register_client_failed')
 			return resp
 ### END - CLIENT
@@ -355,11 +320,8 @@ class Token(Resource):
 			print("RENEW TOKENS")
 			print("json body: ", json_body)
 
-		#app.logger.info("RENEW TOKENS")
-		#app.logger.info("client_id: " + client_id)
-
 		try:
-			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
 			new_token = keycloak_openid.refresh_token(token)
 			if DEBUG_MODE:
 				print('new token: ', new_token)			
@@ -375,17 +337,16 @@ class Token(Resource):
 		client_secret = json_body['client_secret']
 
 		try:
-			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
 			keycloak_openid.logout(token)
 			resp = create_json_response(HTTP_CODE_OK,'succeed_to_log_out')
 			if DEBUG_MODE:
 				print("DELETE TOKENS")
-			#app.logger.info("DELETE TOKENS")
-			#app.logger.info("client_id: " + client_id)	
+			
 
 			return resp
 		except Exception as e:
-			app.logger.error(e)
+			logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_log_out')
 			return resp
 	def get(self,token): # introspect/ verify token
@@ -397,7 +358,7 @@ class Token(Resource):
 		client_secret = args['client_secret']
 
 		try:
-			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
 			token_info = keycloak_openid.introspect(token)
 			filtered_token_info = dict(marshal(token_info,token_verification_view))
 
@@ -405,17 +366,13 @@ class Token(Resource):
 				print("VERIFY TOKEN")
 				print("token info: ", token_info)
 				print("filtered token info: ", filtered_token_info)
-			#app.logger.info("VERIFY TOKEN")
-			#app.logger.info("client_id: " + client_id)
-			#app.logger.info("token info: " + token_info)
-
 			if token_info["active"]: # token is valid
 				resp = create_json_response(HTTP_CODE_OK,'valid_token',additional_json=token_info)
 			else: # token is not valid
 				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'invalid_token')
 			return resp
 		except Exception as e:
-			app.logger.error(e)
+			logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'invalid_token')
 			return resp
 	def post(self,token):  # exchange token
@@ -428,7 +385,7 @@ class Token(Resource):
 			client_id = json_body ['client_id']
 			client_secret = json_body ['client_secret']
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_exchange_token', additional_json={"error" : "invalid json parameters"})
 			return resp
 		
@@ -438,7 +395,7 @@ class Token(Resource):
 		except Exception as e:
 			payload = {"client_id":client_id, "client_secret": client_secret, "grant_type":grant_type, "requested_token_type":requested_token_type,"subject_token":token} 
 
-		token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
+		token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token"
 		if DEBUG_MODE:
 			print('EXCHANGE TOKENS')
 			print("json body: ", json_body)
@@ -456,7 +413,7 @@ class Token(Resource):
 				resp = create_json_response(r.status_code,'fail_to_exchange_token',additional_json=response)
 			return resp
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_exchange_token', additional_json=response)
 			return resp
 		
@@ -473,11 +430,10 @@ class Tokens(Resource):
 		if DEBUG_MODE:
 			print('RETRIEVE TOKENS')
 			print("json body: ", json_body)
-		#app.logger.info('RETRIEVE TOKENS')
-		#app.logger.info("client_id: " + client_id)
+		
 
 		try:
-			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
 			tokens = keycloak_openid.token(username,password)
 
 			filtered_tokens = dict(marshal(tokens, token_model_view))
@@ -485,12 +441,11 @@ class Tokens(Resource):
 			if DEBUG_MODE:
 				print("Tokens: ", tokens)
 				print("Filtered tokens: ", filtered_tokens)
-			#app.logger.info("Tokens: " + tokens)
 
 			resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_tokens',additional_json=filtered_tokens)
 			return resp
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_tokens')
 			return resp
 ### END - TOKEN
@@ -506,7 +461,7 @@ class UserInfo(Resource):
 		client_secret = args['client_secret']
 
 		try:
-			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
 			userinfo = keycloak_openid.userinfo(token)
 			
 			if DEBUG_MODE:
@@ -515,7 +470,7 @@ class UserInfo(Resource):
 			resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_user_info',additional_json=userinfo)
 			return resp
 		except Exception as e:
-			app.logger.error(e)
+			logger.error(e)
 			resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_user_info')
 			return resp
 
@@ -552,7 +507,7 @@ class Users(Resource):
 			if DEBUG_MODE:
 				print('super user access token: ', access_token)
 
-			create_user_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users"
+			create_user_link = keycloak_server + "admin/realms/" + keycloak_realm + "/users"
 			
 			headers = {'Authorization': access_token}
 
@@ -571,7 +526,7 @@ class Users(Resource):
 				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'create_user_failed',info_for_developer="Please check username and password of super user in config.json file")
 			return resp
 		except Exception as e:
-			app.logger.error(e)
+			logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'create_user_failed')
 			return resp
 ### END - USERINFO
@@ -579,15 +534,12 @@ class Users(Resource):
 ### USER : these APIs work only if the provided access token is of a user with user_manager role
 class User(Resource):
 	def get(self,username): # retrieve user
-		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users"
+		users_link = keycloak_server + "admin/realms/" + keycloak_realm + "/users"
 		access_token = request.headers.get('authorization')
 
 		try:
-			#keycloak_admin = KeycloakAdmin(server_url=KEYCLOAK_SERVER,username=config['DEFAULT']['MANAGER_USERNAME'],password=config['DEFAULT']['MANAGER_PASSWORD'],realm_name=KEYCLOAK_REALM,verify=True)
-			#access_token = retrieve_realm_admin_access_token() #This access token is valid only if the user to whom the token is issued has role "query-users" in "realm-management' client roles. 
 			headers = {'Authorization': access_token}
 
-			#headers = {"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJHRGF2RnlXWXlBd2tWRFBpWFFVZnFsdTZJVjhxMldXZVNRQ2praW1WS1RJIn0.eyJqdGkiOiIyNWRhNTkzMy00OTIzLTQwMTItOTdmNC1iYzVmNGZmMDYxYWEiLCJleHAiOjE1MzY4NDAwODYsIm5iZiI6MCwiaWF0IjoxNTM2ODM5Nzg2LCJpc3MiOiJodHRwOi8vMzEuMTcxLjI0NS43NDo4MDgwL2F1dGgvcmVhbG1zL3JlYWxtMDEiLCJhdWQiOiJhZG1pbi1jbGkiLCJzdWIiOiI4MjlhOWE1YS0xMzUxLTQ4ZWYtOTlkNi1hZmRlNjI3YjVmZTciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJhZG1pbi1jbGkiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIyODU5OWM4Yi1jYTllLTQyZjctYmQ3ZS1lNzE5NzUxZmZiMDgiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbXSwicmVzb3VyY2VfYWNjZXNzIjp7fSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhZG1pbjAxIn0.Mv8EoGLbDCvtqL8MJ5op1tJUKVWZeyOI2v-4_F8CuHjcp3V8hRz_kKAqaGoKiKHWm0Usf8iHtdECeAnQLYjusiNJh0IinmSjEXj0Cmi9kjHw62xfZk_I8MQtgfOaQVCSy9-cxuTSmbJoVv531TDzOojY_2KI4ul_hZ78Dtk6eKTz1RiiCpIbxnSat1NPWWCJs-wi5Xd9r8a5NmPOfSKlFKFnTT9zWVuxeGLehky-7R7wo7tovIDekJhRtmuNOyLxKzdLKxjpz7VjB_TVhjuJ7xQBKQA4ypEqL9C2K7PCPydpy-kSFEX6_dL8cDt79zFvHEytOt1Rw828PA6ZylKo-w"}
 			search_criteria = {
 				"username" : username
 			}
@@ -608,12 +560,12 @@ class User(Resource):
 			
 			return resp
 		except Exception as e:
-			app.logger.error(e)
+			logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"retrieve_user_failed")
 			return resp
 
 	def put(self,username): # update user
-		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users/" 
+		users_link = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" 
 		json_body = request.json
 
 		new_user_info = dict(marshal(json_body,user_model_update))
@@ -644,11 +596,11 @@ class User(Resource):
 			
 			return resp
 		except Exception as e:
-			app.logger.error(e)
+			logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"update_user_failed")
 			return resp
 	def delete(self,username): # delete user
-		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users/" 
+		users_link = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" 
 		access_token = request.headers.get('authorization')
 		try:
 			#access_token = retrieve_realm_admin_access_token()
@@ -667,7 +619,7 @@ class User(Resource):
 			resp = create_json_response(HTTP_CODE_OK,"delete_user_successful")
 			return resp  
 		except Exception as e:
-			app.logger.error(e)
+			logger.error(e)
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,"delete_user_failed")
 			return resp
 ### END - USER
@@ -675,7 +627,7 @@ class User(Resource):
 ### ENDPOINT
 class Endpoint(Resource):
 	def get(self): # return endpoint of public key
-		endpoint = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/certs"
+		endpoint = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/certs"
 		epJson = {'pk_endpoint':endpoint}
 		resp = create_json_response(HTTP_CODE_OK,'endpoint_successful',additional_json=epJson)
 		return resp
@@ -690,7 +642,7 @@ class Rpt(Resource):
 			resource = json_body ['resource_name']
 			scope = json_body['scope']
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json={"error" : "invalid json parameters"})
 			return resp
 		
@@ -704,7 +656,7 @@ class Rpt(Resource):
 		access_token = request.headers.get('authorization')
 		headers = {"Authorization":  access_token}
 
-		token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "/protocol/openid-connect/token"
+		token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token"
 		if DEBUG_MODE:
 			print('RETRIEVE RPT TOKEN')
 			print("json body: ", json_body)
@@ -737,8 +689,7 @@ class Rpt(Resource):
 			resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_rpt',additional_json={"rpt token":rpt})
 			return resp
 		except Exception as e:
-			app.logger.error(e) 
-			#resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json=response)
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json={"error description":"Please view the log file"})
 			return resp
 		
@@ -749,17 +700,17 @@ class RptToken(Resource):
 			client_id = json_body ['client_id']
 			client_secret = json_body ['client_secret']	
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_verify_rpt', additional_json={"error" : "invalid json parameters"})
 			return resp
 
-		#token_link = KEYCLOAK_SERVER + "realms/" + KEYCLOAK_REALM + "protocol/openid-connect/token/introspect"
+		#token_link = keycloak_server + "realms/" + keycloak_realm + "protocol/openid-connect/token/introspect"
 		if DEBUG_MODE:
 			print('INTROSPECT RPT TOKENS')
 		#app.logger.info('INTROSPECT TOKENS')
 
 		try:	
-			keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
+			keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
 			token_rpt_info = keycloak_openid.introspect(token="",rpt=token, token_type_hint="requesting_party_token")
 	
 			#r = requests.post(token_link,headers=headers,auth=(client_id,client_secret),data=payload) # data is in x-www-form-urlencoded
@@ -775,7 +726,7 @@ class RptToken(Resource):
 				resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_verify_rpt', additional_json=token_rpt_info)
 			return resp
 		except Exception as e:
-			app.logger.error(e) 
+			logger.error(e) 
 			resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_verify_rpt', additional_json={"error":"Invalid client_id/ client_secret"})
 			return resp
 ### END - RPT

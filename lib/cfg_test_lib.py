@@ -8,7 +8,7 @@ import json
 http_code_ok = 200
 http_code_created = 201
 #http_code_bad_request = 404
-API_URL = "http://127.0.0.1:5000/v1.0"
+API_URL = "http://172.17.0.2:8080/emgum/api/v1.0"
 #API_URL = "http://178.22.68.132/v1.0"
 
 class cfg_test_lib(object):
