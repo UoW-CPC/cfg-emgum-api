@@ -35,7 +35,7 @@ For further details, please refer to API specification version 0.5 in Content Se
 
 * Modify the API URL in *lib/cfg_test_lib.py*
 
-** API_URL = [URL of EMGUM API]
+> API_URL = [URL of EMGUM API]
 
 Example: API_URL = "https://api.emgora.eu/v1/emgum/api"
 
@@ -49,16 +49,16 @@ Example: API_URL = "https://api.emgora.eu/v1/emgum/api"
 
 * Modify the variables values in *test_script.rst*
 
-** ${initial_reg_token}: initial registration token
-** ${client_id}: client_id of the 1st client
-** ${client_secret}: client_secret of the 1st client
-** ${another_client_id}: client_id of the 2nd client 
-** ${another_client_secret}: client_secret of the 2nd client 
-** ${resource_server}: client_secret of the 1st client
-** ${resource}: resource of the 1st client
-** ${scope}: scope of the 1st scope
-** ${manager_user_name}: user name of the user with "manage-user" and "view-users" role
-** ${manager_password}: password of the user with "manage-user" and "view-users" role
+ ** ${initial_reg_token}: initial registration token
+ ** ${client_id}: client_id of the 1st client
+ ** ${client_secret}: client_secret of the 1st client
+ ** ${another_client_id}: client_id of the 2nd client 
+ ** ${another_client_secret}: client_secret of the 2nd client 
+ ** ${resource_server}: client_secret of the 1st client
+ ** ${resource}: resource of the 1st client
+ ** ${scope}: scope of the 1st scope
+ ** ${manager_user_name}: user name of the user with "manage-user" and "view-users" role
+ ** ${manager_password}: password of the user with "manage-user" and "view-users" role
 
 * Run the test script using robot framework
 
