@@ -9,6 +9,8 @@
 
 # v1.3 - 13 Nov 2019
 * Dockerize the application
+* Add configurable url context support
+* Change configurable parameters support from configuration file to enviornment variables
 * Change the logging mechanism into using logger, which can produce log information into standard stream
 * Update /users to cover the case of unauthorized token (token from user without appropriate role)
 * Update test_script and library for test script (cfg_test_lib.py)
