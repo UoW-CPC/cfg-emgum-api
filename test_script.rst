@@ -43,8 +43,25 @@
 		Retrieve client     ${client_id_res}   ${new_reg_token}
 		Status should be 	  ${http_code_bad_request}
 
+	User who is assigned 'manage-users' role can add a new user
+	    ${manager_access_token}    ${manager_refresh_token} =    Retrieve tokens    ${client_id}     ${client_secret}     ${manager_user_name}    ${manager_password}
+		Set Global Variable    ${manager_access_token}
+		Add user    ${manager_access_token}    ${new_username}     ${new_password}    ${firstname}    ${lastname}    ${email}
+		Status should be     ${http_code_created}
+
+	User who is assigned 'manage-users' role can retrieve a user
+		Retrieve user    ${manager_access_token}    ${new_username}
+		Status should be     ${http_code_ok}
+		Data should be    ${firstname}
+
+	User who is assigned 'manage-users' role can update a user
+		Update user    ${manager_access_token}    ${new_username}    ${firstname_update}    ${lastname_update}
+		Status should be     ${http_code_ok}
+		Retrieve user    ${manager_access_token}    ${new_username}
+		Data should be    ${firstname_update}
+
 	Client can retrieve access token and refresh token from user's username and password
-		${access_token}    ${refresh_token} =    Retrieve tokens    ${client_id}     ${client_secret}     ${user_name}    ${password}
+		${access_token}    ${refresh_token} =    Retrieve tokens    ${client_id}     ${client_secret}     ${new_username}    ${new_password}
 		Set Global Variable    ${access_token}
 		Set Global Variable    ${refresh_token} 
 		Status should be 	  ${http_code_ok}
@@ -87,35 +104,19 @@
 	Client cannot verify the access token after log out
 		Verify token     ${new_access_token}    ${client_id}     ${client_secret}
 		Status should be 	  ${http_code_bad_request}
-		
-	User who is assigned 'manager-users' role can add a new user
-	    ${manager_access_token}    ${manager_refresh_token} =    Retrieve tokens    ${client_id}     ${client_secret}     ${manager_user_name}    ${manager_password}
-		Set Global Variable    ${manager_access_token}
-		Add user    ${manager_access_token}    ${new_username}     ${new_password}    ${firstname}    ${lastname}    ${email}
-		Status should be     ${http_code_created}
 
-	User who is assigned 'manager-users' role can retrieve a user
-		Retrieve user    ${manager_access_token}    ${new_username}
-		Status should be     ${http_code_ok}
-		Data should be    ${firstname}
-
-	User who is assigned 'manager-users' role can update a user
-		Update user    ${manager_access_token}    ${new_username}    ${firstname_update}    ${lastname_update}
-		Status should be     ${http_code_ok}
-		Retrieve user    ${manager_access_token}    ${new_username}
-		Data should be    ${firstname_update}
-
-	User who is assigned 'manager-users' role can delete a user
+	User who is assigned 'manage-users' role can delete a user
 		Delete user    ${manager_access_token}    ${new_username}
 		Status should be    ${http_code_ok}
 		Retrieve user    ${manager_access_token}    ${new_username}
-		Status should be    ${http_code_bad_request}
+		Status should be    ${http_code_ok}
+		Data should be    ${not_found_user}
 
 	*** Variables ***
-	${initial_reg_token}    eyJhbGciOiJSUzI1NiIsImtpZCIgOiAiOHVSb0NZNHJYcG5FYk9VNjc4aU5BVGl3NVlSQ29kaVZINmQzUXZHX0pQdyJ9.eyJqdGkiOiI3M2IxMTUyNy0xMGI0LTRhMjUtYWUxNS00ZjQ2ZDA1ZGQ0ZTMiLCJleHAiOjE1NzI3MjA2NjMsIm5iZiI6MCwiaWF0IjoxNTcyNDYxNDYzLCJpc3MiOiJodHRwOi8vMTYxLjc0LjI2LjE1NC9hdXRoL3JlYWxtcy9jZmciLCJhdWQiOiJodHRwOi8vMTYxLjc0LjI2LjE1NC9hdXRoL3JlYWxtcy9jZmciLCJ0eXAiOiJJbml0aWFsQWNjZXNzVG9rZW4ifQ.BW-QCnsfb0-0PiOJm7_Gb2verIoUupjc7LgWsbMCag9UXHHhd0DmiBTwbIstszDWcKCkLSj3dDD-FSGW4f4bU1IPYBZLG9ILmFNpgSjDNTytFOoEgxg1Semv17aNh4E8H6qi5B6Nj6eIrNeqJ74A09ZweZKPwAdst4XHrIBYAJboSGaMWPWVibRNE0zr1TrNxDIqAaATgqu8Y_-IU3GjoGNdan3-HS3TMPR1V57EZvHrpc-xudndF8RYlla_OYThQTSY87OYnCO9JQfCDPK9tUe8CaDhSywrfJORJReQq2I8ctUAzwdNGh9UoD451HhGHeq5hSyEGIWO7fwwXBMSPw    
+	${initial_reg_token}    eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0ZDdlNGQxNi00NzhlLTQyOTEtOGM1ZS05ZjJhYzQ5ZTFmNTIifQ.eyJqdGkiOiI2MGZkN2E0Mi1mY2NiLTQ3ZTAtODdiZi1iOGI1YjUyZjU0NjYiLCJleHAiOjE1NzQ1MTM0MzMsIm5iZiI6MCwiaWF0IjoxNTczNjQ5NDMzLCJpc3MiOiJodHRwczovL2FwaS5lbWdvcmEuZXUvdjEvZW1ndW0vc2VydmVyL2F1dGgvcmVhbG1zL2NmZyIsImF1ZCI6Imh0dHBzOi8vYXBpLmVtZ29yYS5ldS92MS9lbWd1bS9zZXJ2ZXIvYXV0aC9yZWFsbXMvY2ZnIiwidHlwIjoiSW5pdGlhbEFjY2Vzc1Rva2VuIn0.OI_3yxC1xuNRuVrUb4kwiLFL33xxfCJZAzk_F_q28Hw   
 	${invalid_reg_token}           '123'
-	${client_name}              app11
-	${new_client_name}          app21
+	${client_name}              test1A
+	${new_client_name}          test1B
 	@{redirect_uris}             localhost1    localhost2
 	${http_code_not_found}       404
 	${http_code_created}		 201
@@ -125,12 +126,10 @@
 	${threshold}				 2
 	${invalid_threshold}		 0   
 	@{new_redirect_uris}         localhost3	   localhost4
-	${user_name}                 au
-	${password}                  au
-	${client_id}              dtapp
-	${client_secret}          d3575266-5180-4d71-ad25-7cd785cd42f4
-	${another_client_id}     repo
-	${another_client_secret}    f00f6c82-150e-4825-bcfd-ce9e97219add
+	${client_id}              testclient1
+	${client_secret}          d68606a3-be0a-45b0-903a-ae6de1b658cd
+	${another_client_id}     testclient2
+	${another_client_secret}    2596d319-81d5-46fe-8da9-38c8bff1d828
 	${new_username}                peter
 	${firstname}               Pete
 	${lastname}                Whit
@@ -140,11 +139,12 @@
 	${lastname_update}        'Pan'
 	${invalid_client_id}       'abc'
 	${super_user_token}      agagaga
-	${resource_server}    repo   
+	${resource_server}    testclient1   
 	${resource}    artefacts
 	${scope}    delete
-	${manager_user_name}    cfgmanager
-	${manager_password}    cfgmanager
+	${manager_user_name}    testmanager
+	${manager_password}    testmanager123
+	${not_found_user}    The user does not exist
 
 	*** Keywords ***
 	Dynamically register client
