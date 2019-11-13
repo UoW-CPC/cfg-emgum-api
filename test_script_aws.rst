@@ -113,7 +113,7 @@
 		Data should be    ${not_found_user}
 
 	*** Variables ***
-	${initial_reg_token}   [Provide initial registration here]   
+	${initial_reg_token}    eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0ZDdlNGQxNi00NzhlLTQyOTEtOGM1ZS05ZjJhYzQ5ZTFmNTIifQ.eyJqdGkiOiI2MGZkN2E0Mi1mY2NiLTQ3ZTAtODdiZi1iOGI1YjUyZjU0NjYiLCJleHAiOjE1NzQ1MTM0MzMsIm5iZiI6MCwiaWF0IjoxNTczNjQ5NDMzLCJpc3MiOiJodHRwczovL2FwaS5lbWdvcmEuZXUvdjEvZW1ndW0vc2VydmVyL2F1dGgvcmVhbG1zL2NmZyIsImF1ZCI6Imh0dHBzOi8vYXBpLmVtZ29yYS5ldS92MS9lbWd1bS9zZXJ2ZXIvYXV0aC9yZWFsbXMvY2ZnIiwidHlwIjoiSW5pdGlhbEFjY2Vzc1Rva2VuIn0.OI_3yxC1xuNRuVrUb4kwiLFL33xxfCJZAzk_F_q28Hw   
 	${invalid_reg_token}           '123'
 	${client_name}              test1A
 	${new_client_name}          test1B
@@ -126,10 +126,10 @@
 	${threshold}				 2
 	${invalid_threshold}		 0   
 	@{new_redirect_uris}         localhost3	   localhost4
-	${client_id}              [Provide client_id of an OIDC client]
-	${client_secret}          [Provide client_secret of an OIDC client]
-	${another_client_id}     [Provide client_id of another OIDC client]
-	${another_client_secret}    [Provide client_secret of another OIDC client]
+	${client_id}              testclient1
+	${client_secret}          d68606a3-be0a-45b0-903a-ae6de1b658cd
+	${another_client_id}     testclient2
+	${another_client_secret}    2596d319-81d5-46fe-8da9-38c8bff1d828
 	${new_username}                peter
 	${firstname}               Pete
 	${lastname}                Whit
@@ -139,11 +139,11 @@
 	${lastname_update}        'Pan'
 	${invalid_client_id}       'abc'
 	${super_user_token}      agagaga
-	${resource_server}    [Provide client_id of an OIDC client]  
-	${resource}    [Provide resource name of the resource server]
-	${scope}    [Provide scope name of the resource server]
-	${manager_user_name}    [Provide user name of user with 'manage-user' and 'view-users' role]
-	${manager_password}    [Provide password of user with 'manage-user' and 'view-users' role]
+	${resource_server}    testclient1   
+	${resource}    artefacts
+	${scope}    delete
+	${manager_user_name}    testmanager
+	${manager_password}    testmanager123
 	${not_found_user}    The user does not exist
 
 	*** Keywords ***
