@@ -49,9 +49,9 @@ Example: API_URL = "https://api.emgora.eu/v1/emgum/api"
 
 * Modify the variables values in *test_script.rst*
 
-  ** ${initial_reg_token}: initial registration token
+  - ${initial_reg_token}: initial registration token
   
-  ** ${client_id}: client_id of the 1st client
+  - ${client_id}: client_id of the 1st client
   
   ** ${client_secret}: client_secret of the 1st client
   
