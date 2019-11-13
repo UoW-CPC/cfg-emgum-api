@@ -1,6 +1,7 @@
 from app import app, openidc
 from flask_restful import Api
 from parameters import emgum_api_url_context
+from flask import render_template
 
 def index():
 	"""[summary]
@@ -8,8 +9,9 @@ def index():
 	[description]
 	This function is only for testing if the web service is in operating
 	"""
-	return "Hello, this is EMGUM API server."
- 
+	#return "Hello, this is EMGUM API server. Further information is at https://gitlab.com/cfg-platform/cfgum/cfgum-api"
+	return render_template('index.html', title='EMGUM API')
+
 ##### Index
 app.add_url_rule(emgum_api_url_context,'index',index)
 
