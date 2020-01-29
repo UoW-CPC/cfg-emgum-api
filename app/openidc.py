@@ -757,44 +757,83 @@ class Groups(Resource):
 
 ### Users-Groups
 class UsersGroups(Resource):
+    def get_user_id(self,access_token,username):
+        user_id = ""
+        users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
+        headers = {'Authorization': access_token}
+        r = requests.get(users_api_url,headers=headers)
+        logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            ret  = r.json()
+            if ret!=[]: 
+                user_id  = r.json()[0]['id']
+        return user_id,r
+    def get_group_id(self,access_token,groupname):
+        group_id = ""
+        groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
+        headers = {'Authorization': access_token}
+        r = requests.get(groups_api_url,headers=headers)
+        logger.info("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            result_json = r.json()
+            for item in result_json:
+                if item["name"] == groupname:
+                    group_id = item["id"]
+                    logger.info("Group search result => Group found and the id is => {0}".format(group_id))
+                    break
+        return group_id,r
+    def check_user_group_membership(self,access_token,user_id):
+        logger.info("Checking user membership for user_id => {0}".format(user_id))
+        access_token = request.headers.get('authorization')
+        headers = {'Authorization': access_token}
+        group_counts = 0
+        groups_count_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/count"
+        headers = {'Authorization': access_token}
+        r = requests.get(groups_count_api_url,headers=headers)
+        logger.info("user groups count response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            result_json = r.json()
+            group_counts = int(result_json["count"])
+        return group_counts,r
+    def assign_user_to_group(self,access_token,user_id,group_id):
+        logger.info("Assigning user with id => {0} to group with id => {1}".format(user_id,group_id))
+        access_token = request.headers.get('authorization')
+        headers = {'Authorization': access_token}
+        user_group__api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/" + group_id
+        headers = {'Authorization': access_token}
+        r = requests.get(user_group__api_url,headers=headers)
+        logger.info("user to group assignment response => \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        return r
     def put(self,username,groupname): # assign user to the group
         try:
-            logger.debug("Assign user => {0} to the group => {1}".format(username,groupname))
+            logger.info("Assign user => {0} to the group => {1}".format(username,groupname))
             access_token = request.headers.get('authorization')
-            headers = {'Authorization': access_token}
             # Get user id for the given username
-            user_id = ""
-            users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
-            r = requests.get(users_api_url,headers=headers)
-            logger.debug("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
-            if r.status_code == HTTP_CODE_OK:
-                ret  = r.json()
-                if ret!=[]: 
-                    user_id  = r.json()[0]['id']
-                else:
-                    resp = create_json_response(HTTP_CODE_BAD_REQUEST,"group_assignment_failed",additional_json={"Details":"The provided username does not exist"})
-                    return resp
-            elif r.status_code == HTTP_CODE_UNAUTHORIZED:
+            user_id, res_user = self.get_user_id(access_token,username)
+            # Get group id for the given groupname
+            group_id, res_group = self.get_user_id(access_token,username)
+            if res_user.status_code == HTTP_CODE_UNAUTHORIZED or res_group.status_code == HTTP_CODE_UNAUTHORIZED:
                 resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
                 return resp
-            else:
-                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_assignment_failed', info_for_developer =" Please check if the provided access token is of the user with \'manage-user\' role")
+            if user_id == "" or group_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_assignment_failed', info_for_developer =" User/Group with given name does not exist.")
                 return resp
-            # Get group id for the given groupname
-            group_id = ""
-            groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
-            r = requests.get(groups_api_url,headers=headers)
-            logger.debug("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
-            resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer =r.text)
-            return resp
             # Check if user is already member of another group or not. User can only be member of one group
+            groups_count, res_mem = self.check_user_group_membership(access_token,user_id)
+            if res_mem.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
+                return resp
+            if groups_count > 0:
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_assignment_failed', info_for_developer =" The specified user is already member of {0} groups.".format(groups_count))
+                return resp
             # assign user to group
+            r = self.assign_user_to_group(access_token,user_id,group_id)
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_assignment_message', info_for_developer =r.text,additional_json=r.text)
+            return resp
         except Exception as e:
             logger.error("Exception occured during the processing of group assignment request. The details of the exception are as follows: \n {0}".format(e))
-            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=r)
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=e)
             return resp
-
-    
 ### END - Groups
 
 ##### END - RESOURCES

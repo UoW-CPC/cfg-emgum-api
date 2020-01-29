@@ -37,6 +37,6 @@ Id,Code,Message,
 37,succeed_to_exchange_token, Succeed to exchange token.
 38,fail_to_exchange_token, Failed to exchange token.
 39,group_creation_failed, Failed to create group.
-40,group_assignment_failed, Failed to assign user as member of the group.
+40,group_assignment_failed, Failed to assign user to the group.
 41,group_creation_message, Group creation:
 42,group_assignment_message, Group assignment: 
