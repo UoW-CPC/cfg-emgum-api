@@ -738,12 +738,17 @@ class Groups(Resource):
         try:         
             json_body = request.json    
             access_token = request.headers.get('authorization')
-            logger.debug("Create group with input data => {0}".format(json_body))
+            logger.info("Create group with input data => {0}".format(json_body))
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups"
             headers = {'Authorization': access_token}
             r = requests.post(api_url,json=json_body,headers=headers)
-            logger.debug("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
-            resp = create_json_response(r.status_code,'group_creation_message',info_for_developer=r.text)
+            logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
+            if r.status_code == HTTP_CODE_CREATED:
+                resp = create_json_response(r.status_code,'group_creation_message',info_for_developer="New group completed successfuly.")
+            elif r.status_code == HTTP_CODE_CONFLICT:
+                resp = create_json_response(r.status_code,'group_creation_message',info_for_developer="Group with same name already exist.")
+            else:
+                resp = create_json_response(r.status_code,'group_creation_message',info_for_developer=r.text)
             return resp
         except Exception as e:
             logger.error("Exception occured during the processing of Groups post request. The details of the exception are as follows: \n {0}".format(e))
