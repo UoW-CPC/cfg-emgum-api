@@ -811,7 +811,7 @@ class UsersGroups(Resource):
             # Get user id for the given username
             user_id, res_user = self.get_user_id(access_token,username)
             # Get group id for the given groupname
-            group_id, res_group = self.get_user_id(access_token,username)
+            group_id, res_group = self.get_group_id(access_token,groupname)
             if res_user.status_code == HTTP_CODE_UNAUTHORIZED or res_group.status_code == HTTP_CODE_UNAUTHORIZED:
                 resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
                 return resp
