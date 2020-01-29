@@ -801,7 +801,7 @@ class UsersGroups(Resource):
         headers = {'Authorization': access_token}
         user_group__api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/" + group_id
         headers = {'Authorization': access_token}
-        r = requests.get(user_group__api_url,headers=headers)
+        r = requests.put(user_group__api_url,headers=headers)
         logger.info("user to group assignment response => \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         return r
     def put(self,username,groupname): # assign user to the group
