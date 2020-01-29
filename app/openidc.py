@@ -828,8 +828,12 @@ class UsersGroups(Resource):
                 return resp
             # assign user to group
             r = self.assign_user_to_group(access_token,user_id,group_id)
-            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_assignment_message', info_for_developer =r.text,additional_json=r.text)
-            return resp
+            if r.status_code == 204:
+                resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer =" The specified user ({0}) is successfully assigned to group {1}".format(username,groupname))
+                return resp
+            else:
+                resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer =r.text)
+                return resp
         except Exception as e:
             logger.error("Exception occured during the processing of group assignment request. The details of the exception are as follows: \n {0}".format(e))
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=e)
