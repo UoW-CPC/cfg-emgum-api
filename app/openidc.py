@@ -731,4 +731,66 @@ class RptToken(Resource):
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_verify_rpt', additional_json={"error":"Invalid client_id/ client_secret"})
             return resp
 ### END - RPT
+
+### Groups
+class Groups(Resource):
+    def post(self):
+        try:         
+            json_body = request.json    
+            access_token = request.headers.get('authorization')
+            logger.debug("Create group with input data => {0}".format(json_body))
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups"
+            headers = {'Authorization': access_token}
+            r = requests.post(api_url,json=json_body,headers=headers)
+            logger.debug("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
+            resp = create_json_response(r.status_code,'group_creation_message',info_for_developer=r.text)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of Groups post request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=r)
+            return resp
+
+### Users-Groups
+class UsersGroups(Resource):
+    def put(self,username,groupname): # assign user to the group
+        try:
+            logger.debug("Assign user => {0} to the group => {1}".format(username,groupname))
+            access_token = request.headers.get('authorization')
+            headers = {'Authorization': access_token}
+            # Get user id for the given username
+            user_id = ""
+            users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
+            r = requests.get(users_api_url,headers=headers)
+            logger.debug("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+            if r.status_code == HTTP_CODE_OK:
+                ret  = r.json()
+                if ret!=[]: 
+                    user_id  = r.json()[0]['id']
+                else:
+                    resp = create_json_response(HTTP_CODE_BAD_REQUEST,"group_assignment_failed",additional_json={"Details":"The provided username does not exist"})
+                    return resp
+            elif r.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
+                return resp
+            else:
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_assignment_failed', info_for_developer =" Please check if the provided access token is of the user with \'manage-user\' role")
+                return resp
+            # Get group id for the given groupname
+            group_id = ""
+            groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
+            r = requests.get(groups_api_url,headers=headers)
+            logger.debug("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+            resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer =r.text)
+            return resp
+            # Check if user is already member of another group or not. User can only be member of one group
+            # assign user to group
+        except Exception as e:
+            logger.error("Exception occured during the processing of group assignment request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=r)
+            return resp
+
+    
+### END - Groups
+
 ##### END - RESOURCES
+
