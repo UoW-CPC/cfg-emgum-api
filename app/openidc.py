@@ -565,10 +565,10 @@ class User(Resource):
         
         access_token = request.headers.get('authorization')
         
-        logger.debug('\nUPDATE USER')
-        logger.debug('Json body:', json_body)
-        logger.debug('New user info: ', new_user_info)
-        logger.debug('access token:', access_token)    
+        logger.info('\nUPDATE USER')
+        logger.info('Json body:', json_body)
+        logger.info('New user info: ', new_user_info)
+        logger.info('access token:', access_token)    
 
         try:
             #access_token = retrieve_realm_admin_access_token()
@@ -868,7 +868,6 @@ class UserRole(Resource):
             # Check if user is already member of another group or not. User can only be member of one group
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id 
             headers = {'Authorization': access_token}
-            user_info = request.json 
             user_info = {
                 "realmRoles": [rolename, ]
             }
