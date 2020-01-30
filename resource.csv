@@ -40,4 +40,5 @@ Id,Code,Message,
 40,group_assignment_failed, Failed to assign user to the group.
 41,group_creation_message, Group creation:
 42,group_assignment_message, Group assignment: 
-43,role_assignment_failed, Role assignment:
+43,role_assignment_message, Role assignment:
+44,role_assignment_failed, Role assignment failed:
