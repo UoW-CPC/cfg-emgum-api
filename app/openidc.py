@@ -842,6 +842,45 @@ class UsersGroups(Resource):
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=e)
             return resp
 ### END - Groups
+class UserRole(Resource):
+    def get_user_id(self,access_token,username):
+        user_id = ""
+        users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
+        headers = {'Authorization': access_token}
+        r = requests.get(users_api_url,headers=headers)
+        logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            ret  = r.json()
+            if ret!=[]: 
+                user_id  = r.json()[0]['id']
+        return user_id,r
+    def put(self,username,rolename): # assign role to user
+        try:
+            access_token = request.headers.get('authorization')
+            # Get user id for the given username
+            user_id, res_user = self.get_user_id(access_token,username)
+            if res_user.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'role_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
+                return resp
+            if user_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_failed', info_for_developer =" User with given name does not exist.")
+                return resp
+            # Check if user is already member of another group or not. User can only be member of one group
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id 
+            headers = {'Authorization': access_token}
+            user_info = request.json 
+            user_info = {
+                "realmRoles": [rolename, ],
+            }
+            r = requests.put(api_url,json=user_info,headers=headers)
+            disp_message = " The specified user: {0}, is role(s) {1}".format(username,user_info)
+            resp = create_json_response(r.status_code,'role_assignment_message', info_for_developer=disp_message)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of group assignment request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_message',additional_json=e)
+            return resp
+
 
 ##### END - RESOURCES
 

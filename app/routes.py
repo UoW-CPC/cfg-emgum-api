@@ -34,6 +34,8 @@ api.add_resource(openidc.RptToken,emgum_api_url_context + 'rpt/<token>')
 
 api.add_resource(openidc.Groups,emgum_api_url_context + 'groups')
 api.add_resource(openidc.UsersGroups,emgum_api_url_context + 'users/<username>/groups/<groupname>')
+api.add_resource(openidc.UserRole,emgum_api_url_context + 'users/<username>/role/<rolename>')
+
 
 #api.add_resource(openidc.ExchangedToken,'/v1.0/tokens/exchange')
 
