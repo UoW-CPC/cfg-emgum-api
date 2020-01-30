@@ -566,9 +566,9 @@ class User(Resource):
         access_token = request.headers.get('authorization')
         
         logger.info('\nUPDATE USER')
-        logger.info('Json body:', json_body)
-        logger.info('New user info: ', new_user_info)
-        logger.info('access token:', access_token)    
+        logger.info('Json body => {0}'.format(json_body))
+        logger.info('New user info => {0}'.format(new_user_info))
+        #logger.info('access token:', access_token)    
 
         try:
             #access_token = retrieve_realm_admin_access_token()
