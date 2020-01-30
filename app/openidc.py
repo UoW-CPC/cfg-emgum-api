@@ -872,7 +872,7 @@ class UserRole(Resource):
                 'firstname': 'a',
                 'lastname': 'b'
             }
-            r = requests.put(api_url,json=user_info,headers=headers)
+            r = requests.put(api_url,json=json.dumps(user_info),headers=headers)
             disp_message = " The specified user: {0}, is role(s) {1}".format(username,user_info)
             resp = create_json_response(r.status_code,'role_assignment_message', info_for_developer=disp_message)
             return resp
