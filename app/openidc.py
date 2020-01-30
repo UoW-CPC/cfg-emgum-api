@@ -870,14 +870,14 @@ class UserRole(Resource):
             headers = {'Authorization': access_token}
             user_info = request.json 
             user_info = {
-                "realmRoles": [rolename, ],
+                "realmRoles": [rolename, ]
             }
             r = requests.put(api_url,json=user_info,headers=headers)
             disp_message = " The specified user: {0}, is role(s) {1}".format(username,user_info)
             resp = create_json_response(r.status_code,'role_assignment_message', info_for_developer=disp_message)
             return resp
         except Exception as e:
-            logger.error("Exception occured during the processing of group assignment request. The details of the exception are as follows: \n {0}".format(e))
+            logger.error("Exception occured during the processing of role assignment request. The details of the exception are as follows: \n {0}".format(e))
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_message',additional_json=e)
             return resp
 
