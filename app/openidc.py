@@ -50,6 +50,8 @@ for row in reader:
 
 ##### INTERNAL FUNCTIONS
 def create_json_response(http_code, message_label, info_for_developer="", additional_json = {}):
+    logger.info("Creating json response: \n http_code => {0} \nmessage_label => {1} \nmessage_label_value => {2} \ninfo_for_developer => {3} \ninfo_for_developer => {4}" \
+        .format(http_code,message_label,msg_dict[message_label],info_for_developer,additional_json))
     data = {
         'code' : http_code,
         'message'  : msg_dict[message_label] + info_for_developer
