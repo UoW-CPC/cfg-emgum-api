@@ -869,7 +869,8 @@ class UserRole(Resource):
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id 
             headers = {'Authorization': access_token}
             user_info = {
-                "realmRoles": [rolename, ]
+                'firstname': 'a',
+                'lastname': 'b'
             }
             r = requests.put(api_url,json=user_info,headers=headers)
             disp_message = " The specified user: {0}, is role(s) {1}".format(username,user_info)
