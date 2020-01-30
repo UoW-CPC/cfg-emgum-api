@@ -824,12 +824,13 @@ class UsersGroups(Resource):
                 resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
                 return resp
             if groups_count > 0:
-                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_assignment_failed', info_for_developer =" The specified user is already member of {0} groups.".format(groups_count))
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_assignment_failed', info_for_developer=" The specified user is already member of {0} groups.".format(groups_count))
                 return resp
             # assign user to group
             r = self.assign_user_to_group(access_token,user_id,group_id)
             if r.status_code == 204:
-                resp = create_json_response(r.status_code,'group_assignment_message', additional_json =" The specified user ({0}) is successfully assigned to group {1}".format(username,groupname))
+                disp_message = " The specified user: {0}, is successfully assigned to group {1}".format(username,groupname)
+                resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer=disp_message)
                 return resp
             else:
                 resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer =r.text, additional_json=r)
