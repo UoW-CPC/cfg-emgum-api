@@ -889,7 +889,7 @@ class UserRole(Resource):
                 resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_revoke_failed', info_for_developer =" User with given name does not exist.")
                 return resp
             # Check if user is already member of another group or not. User can only be member of one group
-            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id "/role-mappings/" + keycloak_realm 
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/" + keycloak_realm 
             headers = {'Authorization': access_token}
             roles = request.json
             r = requests.delete(api_url,json=roles,headers=headers)
