@@ -859,14 +859,12 @@ class UserRole(Resource):
         role_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles/" + rolename 
         headers = {'Authorization': access_token}
         r = requests.get(role_api_url,headers=headers)
-        logger.info("Get role id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        logger.info("Get role id response. \n status_code => {0} \n response_message => {1} \n response_json => {2}".format(r.status_code,r.text,r.json()))
         if r.status_code == HTTP_CODE_OK:
-            result_json = r.json()
-            for item in result_json:
-                if item["name"] == rolename:
-                    role_id = item["id"]
-                    logger.info("Role search result => Role found and the id is => {0}".format(role_id))
-                    break
+            result_json = json.loads(r.json())
+            if "id" in result_json.keys():
+                role_id = result_json["id"]
+                logger.info("Role search result => Role found and the id is => {0}".format(role_id))
         return role_id,r
     def post(self,username,rolename): # assign role to user
         try:
