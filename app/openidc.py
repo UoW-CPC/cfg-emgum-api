@@ -861,7 +861,7 @@ class UserRole(Resource):
         r = requests.get(role_api_url,headers=headers)
         logger.info("Get role id response. \n status_code => {0} \n response_message => {1} \n response_json => {2}".format(r.status_code,r.text,r.json()))
         if r.status_code == HTTP_CODE_OK:
-            result_json = json.loads(r.json())
+            result_json = r.json()
             if "id" in result_json.keys():
                 role_id = result_json["id"]
                 logger.info("Role search result => Role found and the id is => {0}".format(role_id))
