@@ -485,7 +485,7 @@ class Users(Resource):
                 "enabled": True,
                 "firstName": firstname,
                 "lastName": lastname,
-                "realmRoles": ["user_default", "developer", ],
+                "realmRoles": ["user_default", ],
                 #"attributes": {"organization": organization},
                 "credentials": [{"value": password,"type": "password",}]
             }
@@ -854,7 +854,7 @@ class UserRole(Resource):
             if ret!=[]: 
                 user_id  = r.json()[0]['id']
         return user_id,r
-    def put(self,username,rolename): # assign role to user
+    def post(self,username): # assign role to user
         try:
             access_token = request.headers.get('authorization')
             # Get user id for the given username
@@ -866,22 +866,39 @@ class UserRole(Resource):
                 resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_failed', info_for_developer =" User with given name does not exist.")
                 return resp
             # Check if user is already member of another group or not. User can only be member of one group
-            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id 
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id "/role-mappings/" + keycloak_realm 
             headers = {'Authorization': access_token}
-            firstname = "f"
-            lastname = "l"
-            new_user = {
-                "firstName": firstname,
-                "lastName": lastname,
-                "realmRoles": ["user_default", "developer", ]
-            }
-            r = requests.put(api_url,json=json.dumps(new_user),headers=headers)
-            disp_message = " The specified user: {0}, is role(s) {1}".format(username,new_user)
+            roles = request.json
+            r = requests.post(api_url,json=roles,headers=headers)
+            disp_message = " The specified user: {0}, is assigned with the following role(s) {1}".format(username,roles)
             resp = create_json_response(r.status_code,'role_assignment_message', info_for_developer=disp_message)
             return resp
         except Exception as e:
             logger.error("Exception occured during the processing of role assignment request. The details of the exception are as follows: \n {0}".format(e))
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_message',additional_json=e)
+            return resp
+    def delete(self,username): # assign role to user
+        try:
+            access_token = request.headers.get('authorization')
+            # Get user id for the given username
+            user_id, res_user = self.get_user_id(access_token,username)
+            if res_user.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'role_revoke_failed',info_for_developer="Please ensure that the provided access token is valid")
+                return resp
+            if user_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_revoke_failed', info_for_developer =" User with given name does not exist.")
+                return resp
+            # Check if user is already member of another group or not. User can only be member of one group
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id "/role-mappings/" + keycloak_realm 
+            headers = {'Authorization': access_token}
+            roles = request.json
+            r = requests.delete(api_url,json=roles,headers=headers)
+            disp_message = " The following role(s) => {0} are revoked from user => {1} ".format(roles, username)
+            resp = create_json_response(r.status_code,'role_revoke_message', info_for_developer=disp_message)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of role revokation request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_revoke_message',additional_json=e)
             return resp
 
 

@@ -42,3 +42,5 @@ Id,Code,Message,
 42,group_assignment_message, Group assignment: 
 43,role_assignment_message, Role assignment:
 44,role_assignment_failed, Role assignment failed:
+45,role_revoke_message, Role revoking:
+46,role_revoke_failed, Role failed:
