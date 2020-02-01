@@ -485,7 +485,7 @@ class Users(Resource):
                 "enabled": True,
                 "firstName": firstname,
                 "lastName": lastname,
-                "realmRoles": ["user_default", ],
+                "realmRoles": ["user_default", "developer", ],
                 #"attributes": {"organization": organization},
                 "credentials": [{"value": password,"type": "password",}]
             }
@@ -868,12 +868,15 @@ class UserRole(Resource):
             # Check if user is already member of another group or not. User can only be member of one group
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id 
             headers = {'Authorization': access_token}
-            user_info = {
-                'firstname': 'a',
-                'lastname': 'b'
+            firstname = "f"
+            lastname = "l"
+            new_user = {
+                "firstName": firstname,
+                "lastName": lastname,
+                "realmRoles": ["user_default", "developer", ]
             }
-            r = requests.put(api_url,json=json.dumps(user_info),headers=headers)
-            disp_message = " The specified user: {0}, is role(s) {1}".format(username,user_info)
+            r = requests.put(api_url,json=json.dumps(new_user),headers=headers)
+            disp_message = " The specified user: {0}, is role(s) {1}".format(username,new_user)
             resp = create_json_response(r.status_code,'role_assignment_message', info_for_developer=disp_message)
             return resp
         except Exception as e:
