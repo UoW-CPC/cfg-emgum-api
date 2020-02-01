@@ -854,7 +854,21 @@ class UserRole(Resource):
             if ret!=[]: 
                 user_id  = r.json()[0]['id']
         return user_id,r
-    def post(self,username): # assign role to user
+    def get_role_id(self,access_token,rolename):
+        role_id = ""
+        role_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles/" + rolename 
+        headers = {'Authorization': access_token}
+        r = requests.get(role_api_url,headers=headers)
+        logger.info("Get role id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            result_json = r.json()
+            for item in result_json:
+                if item["name"] == rolename:
+                    role_id = item["id"]
+                    logger.info("Role search result => Role found and the id is => {0}".format(role_id))
+                    break
+        return role_id,r
+    def post(self,username,rolename): # assign role to user
         try:
             access_token = request.headers.get('authorization')
             # Get user id for the given username
@@ -865,10 +879,17 @@ class UserRole(Resource):
             if user_id == "":
                 resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_failed', info_for_developer =" User with given name does not exist.")
                 return resp
+            role_id, res_role = self.get_role_id(access_token,rolename)
+            if res_user.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'role_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
+                return resp
+            if role_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_failed', info_for_developer =" User with given name does not exist.")
+                return resp
             # Check if user is already member of another group or not. User can only be member of one group
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
-            roles = request.json
+            roles = [{"id":role_id, "name": rolename}]
             r = requests.post(api_url,json=roles,headers=headers)
             disp_message = " The specified user: {0}, is assigned with the following role(s) {1}".format(username,roles)
             resp = create_json_response(r.status_code,'role_assignment_message', info_for_developer=disp_message)
