@@ -832,11 +832,10 @@ class UsersGroups(Resource):
             r = self.assign_user_to_group(access_token,user_id,group_id)
             if r.status_code == 204:
                 disp_message = " The specified user: {0}, is successfully assigned to group {1}".format(username,groupname)
-                resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer=disp_message)
-                return resp
             else:
-                resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer =r.text, additional_json=r)
-                return resp
+                disp_message = r.text
+            resp = create_json_response(r.status_code,'group_assignment_message', info_for_developer=disp_message)
+            return resp
         except Exception as e:
             logger.error("Exception occured during the processing of group assignment request. The details of the exception are as follows: \n {0}".format(e))
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=e)
@@ -872,31 +871,34 @@ class UserRole(Resource):
             # Get user id for the given username
             user_id, res_user = self.get_user_id(access_token,username)
             if res_user.status_code == HTTP_CODE_UNAUTHORIZED:
-                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'role_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'role_grant_failed',info_for_developer="Please ensure that the provided access token is valid")
                 return resp
             if user_id == "":
-                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_failed', info_for_developer =" User with given name does not exist.")
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_grant_failed', info_for_developer =" User with given name does not exist.")
                 return resp
             role_id, res_role = self.get_role_id(access_token,rolename)
             if res_user.status_code == HTTP_CODE_UNAUTHORIZED:
-                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'role_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'role_grant_failed',info_for_developer="Please ensure that the provided access token is valid")
                 return resp
             if role_id == "":
-                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_failed', info_for_developer =" User with given name does not exist.")
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_grant_failed', info_for_developer =" Role with given name does not exist.")
                 return resp
-            # Check if user is already member of another group or not. User can only be member of one group
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
             roles = [{"id":role_id, "name": rolename}]
             r = requests.post(api_url,json=roles,headers=headers)
-            disp_message = " The specified user: {0}, is assigned with the following role(s) {1}".format(username,roles)
-            resp = create_json_response(r.status_code,'role_assignment_message', info_for_developer=disp_message)
+            logger.info("Delete role response: \n status_code => {0} \n response_message => {1} \n response_json => {2}".format(r.status_code,r.text,r.json()))
+            if r.status_code == 204:
+                disp_message = " The user: {0}, is granted the role of: {1}".format(username,rolename)
+            else:
+                disp_message = r.text
+            resp = create_json_response(r.status_code,'role_grant_message', info_for_developer=disp_message)
             return resp
         except Exception as e:
-            logger.error("Exception occured during the processing of role assignment request. The details of the exception are as follows: \n {0}".format(e))
-            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_assignment_message',additional_json=e)
+            logger.error("Exception occured during the processing of role grant request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_grant_message',additional_json=e)
             return resp
-    def delete(self,username): # assign role to user
+    def delete(self,username,rolename): # revoke role from user
         try:
             access_token = request.headers.get('authorization')
             # Get user id for the given username
@@ -907,12 +909,22 @@ class UserRole(Resource):
             if user_id == "":
                 resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_revoke_failed', info_for_developer =" User with given name does not exist.")
                 return resp
-            # Check if user is already member of another group or not. User can only be member of one group
+            role_id, res_role = self.get_role_id(access_token,rolename)
+            if res_user.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'role_revoke_failed',info_for_developer="Please ensure that the provided access token is valid")
+                return resp
+            if role_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'role_revoke_failed', info_for_developer =" Role with given name does not exist.")
+                return resp
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
-            roles = request.json
+            roles = [{"id":role_id, "name": rolename}]
             r = requests.delete(api_url,json=roles,headers=headers)
-            disp_message = " The following role(s) => {0} are revoked from user => {1} ".format(roles, username)
+            logger.info("delete role response: \n status_code => {0} \n response_message => {1} \n response_json => {2}".format(r.status_code,r.text,r.json()))
+            if r.status_code == 204:
+                disp_message = " The role => {0} is now revoked from user => {1} ".format(roles, username)
+            else:
+                disp_message = r.text
             resp = create_json_response(r.status_code,'role_revoke_message', info_for_developer=disp_message)
             return resp
         except Exception as e:
