@@ -858,7 +858,7 @@ class UserRole(Resource):
         role_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles/" + rolename 
         headers = {'Authorization': access_token}
         r = requests.get(role_api_url,headers=headers)
-        logger.info("Get role id response. \n status_code => {0} \n response_message => {1} \n response_json => {2}".format(r.status_code,r.text,r.json()))
+        logger.info("Get role id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
             if "id" in result_json.keys():
@@ -885,9 +885,9 @@ class UserRole(Resource):
                 return resp
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
-            roles = [{"id":role_id, "name": rolename}]
+            roles = [{"id": role_id, "name": rolename}]
             r = requests.post(api_url,json=roles,headers=headers)
-            logger.info("Delete role response: \n status_code => {0} \n response_message => {1} \n response_json => {2}".format(r.status_code,r.text,r.json()))
+            logger.info("Delete role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             if r.status_code == 204:
                 disp_message = " The user: {0}, is granted the role of: {1}".format(username,rolename)
             else:
@@ -920,7 +920,7 @@ class UserRole(Resource):
             headers = {'Authorization': access_token}
             roles = [{"id":role_id, "name": rolename}]
             r = requests.delete(api_url,json=roles,headers=headers)
-            logger.info("delete role response: \n status_code => {0} \n response_message => {1} \n response_json => {2}".format(r.status_code,r.text,r.json()))
+            logger.info("delete role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             if r.status_code == 204:
                 disp_message = " The role => {0} is now revoked from user => {1} ".format(roles, username)
             else:
