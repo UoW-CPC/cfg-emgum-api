@@ -746,7 +746,7 @@ class Groups(Resource):
             r = requests.post(api_url,json=json_body,headers=headers)
             logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
             if r.status_code == HTTP_CODE_CREATED:
-                resp = create_json_response(r.status_code,'group_creation_message',info_for_developer="New group completed successfuly.")
+                resp = create_json_response(r.status_code,'group_creation_message',info_for_developer="New group created successfuly.")
             elif r.status_code == HTTP_CODE_CONFLICT:
                 resp = create_json_response(r.status_code,'group_creation_message',info_for_developer="Group with same name already exist.")
             else:
