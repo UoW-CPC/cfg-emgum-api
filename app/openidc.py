@@ -797,6 +797,19 @@ class UsersGroups(Resource):
             result_json = r.json()
             group_counts = int(result_json["count"])
         return group_counts,r
+    # def check_user_membership_for_group(self,access_token,user_id,group_id):
+    #     logger.info("Checking whether user => {0} is a member of group => {1}".format(user_id,group_id))
+    #     access_token = request.headers.get('authorization')
+    #     headers = {'Authorization': access_token}
+    #     group_counts = 0
+    #     groups_membership_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups"
+    #     headers = {'Authorization': access_token}
+    #     r = requests.get(groups_count_api_url,headers=headers)
+    #     logger.info("user groups response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+    #     if r.status_code == HTTP_CODE_OK:
+    #         result_json = r.json()
+    #         group_counts = int(result_json["count"])
+    #     return group_counts,r
     def assign_user_to_group(self,access_token,user_id,group_id):
         logger.info("Assigning user with id => {0} to group with id => {1}".format(user_id,group_id))
         access_token = request.headers.get('authorization')
@@ -840,7 +853,58 @@ class UsersGroups(Resource):
             logger.error("Exception occured during the processing of group assignment request. The details of the exception are as follows: \n {0}".format(e))
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=e)
             return resp
+    def delete(self,username,groupname): # un-assign user to the group
+        try:
+            logger.info("Un-assigned user => {0} from the group => {1}".format(username,groupname))
+            access_token = request.headers.get('authorization')
+            # Get user id for the given username
+            user_id, res_user = self.get_user_id(access_token,username)
+            # Get group id for the given groupname
+            group_id, res_group = self.get_group_id(access_token,groupname)
+            if res_user.status_code == HTTP_CODE_UNAUTHORIZED or res_group.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_un_assignment_failed',info_for_developer="Please ensure that the provided access token is valid")
+                return resp
+            if user_id == "" or group_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_un_assignment_failed', info_for_developer =" User/Group with given name does not exist.")
+                return resp
+            delete_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/" + group_id
+            headers = {'Authorization': access_token}
+            r = requests.delete(delete_api_url,headers=headers)
+            logger.info("unassigned group response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+            if r.status_code == 204:
+                disp_message = " The group => {0} is unassigned from user => {1} ".format(groupname, username)
+            else:
+                disp_message = r.text
+            resp = create_json_response(r.status_code,'group_unassigned_message', info_for_developer=disp_message)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of group unassignment request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_unassigned_message',additional_json=e)
+            return resp
 ### END - Groups
+class Roles(Resource):
+    def get(self):
+        try:
+            roles_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles"
+            access_token = request.headers.get('authorization')
+            headers = {'Authorization': access_token}
+            r = requests.get(roles_api_url,headers=headers)
+            logger.info("Get roles response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+            rolesList =[]
+            rolesData = {
+                'roles': rolesList
+            }
+            if r.status_code == HTTP_CODE_OK:
+                result_json = r.json()
+                for item in result_json:
+                    rolesList.append(item["name"])
+            resp = create_json_response(HTTP_CODE_OK,"retrieve_roles_successful",additional_json=rolesData)
+            return resp
+        except Exception as e:
+            logger.error(e)
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,"retrieve_roles_failed",additional_json=r)
+            return resp
+
 class UserRole(Resource):
     def get_user_id(self,access_token,username):
         user_id = ""

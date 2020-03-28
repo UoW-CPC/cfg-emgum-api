@@ -44,3 +44,7 @@ Id,Code,Message,
 44,role_grant_failed, Role grant request failed:
 45,role_revoke_message, Role revoking:
 46,role_revoke_failed, Role failed:
+47,group_un_assignment_failed, Failed to un-assign user from the group.
+48,group_unassigned_message, Group un-assigned:
+49,retrieve_roles_successful, Roles retreived successfully!,
+50,retrieve_roles_failed, Roles retreival failed!,
