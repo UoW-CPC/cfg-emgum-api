@@ -916,7 +916,7 @@ class UserRole1(Resource):
             if ret!=[]: 
                 user_id  = r.json()[0]['id']
         return user_id,r
-     def get(self,username):             # get user roles
+    def get(self,username):
         try:
             access_token = request.headers.get('authorization')
             # Get user id for the given username
