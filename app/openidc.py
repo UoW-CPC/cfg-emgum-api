@@ -904,7 +904,7 @@ class Roles(Resource):
             logger.error(e)
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,"retrieve_roles_failed",additional_json=r)
             return resp
-class UserRole(Resource):
+class UserRole1(Resource):
     def get_user_id(self,access_token,username):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
@@ -916,19 +916,7 @@ class UserRole(Resource):
             if ret!=[]: 
                 user_id  = r.json()[0]['id']
         return user_id,r
-    def get_role_id(self,access_token,rolename):
-        role_id = ""
-        role_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles/" + rolename 
-        headers = {'Authorization': access_token}
-        r = requests.get(role_api_url,headers=headers)
-        logger.info("Get role id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
-        if r.status_code == HTTP_CODE_OK:
-            result_json = r.json()
-            if "id" in result_json.keys():
-                role_id = result_json["id"]
-                logger.info("Role search result => Role found and the id is => {0}".format(role_id))
-        return role_id,r
-    def get(self,username):             # get user roles
+     def get(self,username):             # get user roles
         try:
             access_token = request.headers.get('authorization')
             # Get user id for the given username
@@ -959,6 +947,31 @@ class UserRole(Resource):
             logger.error("Exception occured. The details of the exception are as follows: \n {0}".format(e))
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'retrieve_roles_failed',additional_json=e)
             return resp
+
+class UserRole(Resource):
+    def get_user_id(self,access_token,username):
+        user_id = ""
+        users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
+        headers = {'Authorization': access_token}
+        r = requests.get(users_api_url,headers=headers)
+        logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            ret  = r.json()
+            if ret!=[]: 
+                user_id  = r.json()[0]['id']
+        return user_id,r
+    def get_role_id(self,access_token,rolename):
+        role_id = ""
+        role_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles/" + rolename 
+        headers = {'Authorization': access_token}
+        r = requests.get(role_api_url,headers=headers)
+        logger.info("Get role id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            result_json = r.json()
+            if "id" in result_json.keys():
+                role_id = result_json["id"]
+                logger.info("Role search result => Role found and the id is => {0}".format(role_id))
+        return role_id,r
 
     def post(self,username,rolename):   # assign role to user
         try:
