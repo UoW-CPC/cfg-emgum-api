@@ -904,7 +904,6 @@ class Roles(Resource):
             logger.error(e)
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,"retrieve_roles_failed",additional_json=r)
             return resp
-
 class UserRole(Resource):
     def get_user_id(self,access_token,username):
         user_id = ""
@@ -929,7 +928,39 @@ class UserRole(Resource):
                 role_id = result_json["id"]
                 logger.info("Role search result => Role found and the id is => {0}".format(role_id))
         return role_id,r
-    def post(self,username,rolename): # assign role to user
+    def get(self,username):             # get user roles
+        try:
+            access_token = request.headers.get('authorization')
+            # Get user id for the given username
+            user_id, res_user = self.get_user_id(access_token,username)
+            if res_user.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'retrieve_roles_failed',info_for_developer="Please ensure that the provided access token is valid")
+                return resp
+            if user_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'retrieve_roles_failed', info_for_developer =" User with given name does not exist.")
+                return resp
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
+            headers = {'Authorization': access_token}
+            r = requests.get(api_url,headers=headers)
+            logger.info("Get user role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+            rolesList =[]
+            rolesData = {
+                'roles': rolesList
+            }
+            if r.status_code == HTTP_CODE_OK:
+                result_json = r.json()
+                for item in result_json:
+                    rolesList.append(item["name"])
+                resp = create_json_response(HTTP_CODE_OK,"retrieve_roles_successful",additional_json=rolesData)
+            else:
+                resp = create_json_response(HTTP_CODE_OK,"retrieve_roles_failed",additional_json=rolesData)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'retrieve_roles_failed',additional_json=e)
+            return resp
+
+    def post(self,username,rolename):   # assign role to user
         try:
             access_token = request.headers.get('authorization')
             # Get user id for the given username
