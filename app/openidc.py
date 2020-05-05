@@ -647,21 +647,18 @@ class Endpoint(Resource):
 ### RPT (Relying party token)
 class Rpt(Resource):
     def post(self): # retrieve rpt token
+        logger.info("Retrieve rpt token")
         json_body = request.json
+        logger.debug("json:",json_body)
         try:
             rs_id = json_body ['resource_server_id']
             resource = json_body ['resource_name']
-            scope = json_body['scope']
         except Exception as e:
             logger.error(e) 
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json={"error" : "invalid json parameters"})
             return resp
-        
-        if scope == "" :
-            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt',additional_json={"error" : "invalid json parameters"})
-            return resp
-        
-        rs_scope = resource + "#" + scope
+                
+        rs_scope = resource # + "#" + scope
         payload = {"audience":rs_id, "permission": rs_scope, "grant_type":"urn:ietf:params:oauth:grant-type:uma-ticket"} 
         
         access_token = request.headers.get('authorization')
@@ -697,7 +694,7 @@ class Rpt(Resource):
             return resp
         except Exception as e:
             logger.error(e) 
-            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_get_rpt', additional_json={"error description":"Please view the log file"})
+            resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'fail_to_get_rpt')#, additional_json=e)#{"error description":"Please view the log file"})
             return resp
         
 class RptToken(Resource):
