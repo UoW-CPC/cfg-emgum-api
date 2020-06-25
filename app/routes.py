@@ -1,7 +1,28 @@
 from app import app, openidc
 from flask_restful import Api
-from parameters import emgum_api_url_context
+from parameters import emgum_api_url_context, keycloak_server,server_port
 from flask import render_template
+
+from healthcheck import HealthCheck
+import requests
+
+health = HealthCheck()
+
+# add your own check function to the healthcheck
+def keycloak_available():
+	x = requests.get(keycloak_server+"realms/master/health/check")
+	ret = (x.status_code==200)
+	return ret, "Keycloak ok"
+
+def emgum_api_available():
+	x = requests.get("http://127.0.0.1:"+server_port+emgum_api_url_context)
+	ret = (x.status_code==200)
+	return ret, "EMGUM API ok"
+
+health.add_check(keycloak_available)
+health.add_check(emgum_api_available)
+health.add_section("EMGUM API version", "1.5")
+
 
 def index():
 	"""[summary]
@@ -14,6 +35,7 @@ def index():
 
 ##### Index
 app.add_url_rule(emgum_api_url_context,'index',index)
+app.add_url_rule(emgum_api_url_context+'health','health',view_func=health.run)
 
 api = Api(app)
 api.add_resource(openidc.Client,emgum_api_url_context + 'clients/<client_id>')
