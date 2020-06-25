@@ -2,3 +2,4 @@ flask
 flask_restful
 python-keycloak
 py-healthcheck
+psycopg2
