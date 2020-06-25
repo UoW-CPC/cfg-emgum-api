@@ -2,4 +2,4 @@ flask
 flask_restful
 python-keycloak
 py-healthcheck
-psycopg2
+psycopg2-binary
