@@ -410,28 +410,25 @@ class Token(Resource):
         
 class Tokens(Resource):
     def post(self): #  retrieve access and refresh token from user's username and password. Only client allowed for direct access grants could request
+        logger.debug("retrieve tokens")
         json_body = request.json
-        username = json_body ['username']
-        password = json_body ['password']
-
-        client_id = json_body ['client_id']
-
-        client_secret = json_body ['client_secret']
-
-        logger.debug('RETRIEVE TOKENS')
-        logger.debug("json body: ", json_body)
         
-
         try:
-            keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
-            tokens = keycloak_openid.token(username,password)
-
-            filtered_tokens = dict(marshal(tokens, token_model_view))
-
-            logger.debug("Tokens: ", tokens)
-            logger.debug("Filtered tokens: ", filtered_tokens)
-
-            resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_tokens',additional_json=filtered_tokens)
+            type = json_body['grant_type']
+            client_id = json_body ['client_id']
+            client_secret = json_body ['client_secret']
+            if(type=='password'):
+                username = json_body ['username']
+                password = json_body ['password']
+                payload = {"grant_type":type, "client_id": client_id, "client_secret":client_secret,"username":username,"password":password}
+            else:
+                payload = {"grant_type":type, "client_id": client_id, "client_secret":client_secret}
+    
+            token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token"
+            
+            r = requests.post(token_link,data=payload) # data is in x-www-form-urlencoded
+            response  = r.json()
+            resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_tokens',additional_json=response)
             return resp
         except Exception as e:
             logger.error(e) 
