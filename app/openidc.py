@@ -2,8 +2,6 @@
 from flask import Flask
 from flask import jsonify, abort, Response
 from flask_restful import request, reqparse, fields, marshal, Resource
-from keycloak import KeycloakOpenID
-from keycloak import KeycloakAdmin
 import os
 import json
 import csv
@@ -14,7 +12,8 @@ import logging
 from app import app
 import random
 from random import randint
-from parameters import keycloak_server, keycloak_realm
+from parameters import keycloak_server, keycloak_realm, ssl_key, ssl_cert
+#from posix import access
 
 ##### CONSTANT VALUES
 # http codes
@@ -181,7 +180,7 @@ class Client(Resource):
 
         received_response = False
         try:
-            r = requests.get(clients_link, headers=headers)
+            r = requests.get(clients_link, headers=headers,cert =(ssl_cert,ssl_key))
             client = r.json()
 
             received_response = True 
@@ -220,7 +219,7 @@ class Client(Resource):
 
         
         try:
-            r = requests.put(clients_link, json = json_body, headers=headers)
+            r = requests.put(clients_link, json = json_body, headers=headers,cert =(ssl_cert,ssl_key))
 
             filtered_response = dict(marshal(json.loads(r.text), client_model_view)) # filter the response to match with client_model_view
             filtered_none_response = dict(filter(lambda item: item[1] is not None, filtered_response.items())) # remove all fields with value None
@@ -253,7 +252,7 @@ class Client(Resource):
         logger.debug("clients_link: ", clients_link)
 
         try:        
-            r = requests.delete(clients_link, headers=headers)
+            r = requests.delete(clients_link, headers=headers,cert =(ssl_cert,ssl_key))
             resp = create_json_response(HTTP_CODE_OK,'delete_client_successful')
             return resp
         except Exception as e:
@@ -284,7 +283,7 @@ class Clients(Resource):
 
         # Send a request to keycloak server to dynamically register as keycloak client
         try:
-            r = requests.post(request_link, json = json_body, headers=headers)
+            r = requests.post(request_link, json = json_body, headers=headers,cert =(ssl_cert,ssl_key))
             response = r.json()
 
             logger.debug("response: ",response)
@@ -306,16 +305,17 @@ class Token(Resource):
     def put(self,token): # refresh/ renew access token. Token = refresh token
         json_body = request.json
         client_id = json_body ['client_id']
-
         client_secret = json_body ['client_secret']
-        
+
         logger.debug("RENEW TOKENS")
         logger.debug("json body: ", json_body)
 
         try:
-            keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
-            new_token = keycloak_openid.refresh_token(token)
-
+            token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token"
+            payload = {"client_id":client_id, "client_secret": client_secret, "refresh_token": token, "grant_type":"refresh_token"} 
+            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            new_token  = r.json()
+           
             logger.debug('new token: ', new_token)   
                      
             resp = create_json_response(HTTP_CODE_OK,"succeed_to_refresh_token",additional_json=new_token)
@@ -330,8 +330,10 @@ class Token(Resource):
         client_secret = json_body['client_secret']
 
         try:
-            keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
-            keycloak_openid.logout(token)
+            token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/logout"
+            payload = {"client_id":client_id, "client_secret": client_secret, "refresh_token": token} 
+            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            
             resp = create_json_response(HTTP_CODE_OK,'succeed_to_log_out')
             
             logger.debug("DELETE TOKENS")         
@@ -350,8 +352,10 @@ class Token(Resource):
         client_secret = args['client_secret']
 
         try:
-            keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
-            token_info = keycloak_openid.introspect(token)
+            token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token/introspect"
+            payload = {"client_id":client_id, "client_secret": client_secret, "token": token} 
+            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            token_info  = r.json()
             filtered_token_info = dict(marshal(token_info,token_verification_view))
             
             logger.debug("VERIFY TOKEN")
@@ -393,7 +397,7 @@ class Token(Resource):
         logger.debug("json body: ", json_body)
 
         try:
-            r = requests.post(token_link,data=payload) # data is in x-www-form-urlencoded
+            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
             response  = r.json()
 
             logger.debug("Response:",response)
@@ -426,7 +430,7 @@ class Tokens(Resource):
     
             token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token"
             
-            r = requests.post(token_link,data=payload) # data is in x-www-form-urlencoded
+            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
             response  = r.json()
             resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_tokens',additional_json=response)
             return resp
@@ -439,16 +443,25 @@ class Tokens(Resource):
 ### USERINFO
 class UserInfo(Resource):
     def get(self,token): # get user information. Token = access token.
+        # will be deleted
         parser = reqparse.RequestParser()
         parser.add_argument('client_id')
         parser.add_argument('client_secret')
         args = parser.parse_args()
         client_id = args['client_id']
         client_secret = args['client_secret']
-
+        # end-will be deleted
+        
         try:
-            keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
-            userinfo = keycloak_openid.userinfo(token)
+            userinfo_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/userinfo"
+            logger.debug("userinfo link:",userinfo_link)
+            
+            access_token = "Bearer " + token
+            headers = {"Authorization": access_token}
+           
+            r = requests.get(userinfo_link,headers=headers,cert =(ssl_cert,ssl_key))
+            logger.debug("response:",r.text)
+            userinfo = r.json()
             
             logger.debug('\nRETRIEVE USER INFORMATION: ')
 
@@ -495,7 +508,7 @@ class Users(Resource):
             
             headers = {'Authorization': access_token}
 
-            r = requests.post(create_user_link,json=new_user,headers=headers)
+            r = requests.post(create_user_link,json=new_user,headers=headers,cert =(ssl_cert,ssl_key))
 
             logger.debug('response: ', r.status_code, '-', r.text)
 
@@ -527,7 +540,7 @@ class User(Resource):
                 "username" : username
             }
 
-            r = requests.get(users_link,params=search_criteria,headers=headers)
+            r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
 
             logger.debug('RETRIEVE A USER')
             logger.debug("response:",r)
@@ -575,14 +588,14 @@ class User(Resource):
                 "username" : username
             }
 
-            r = requests.get(users_link,params=search_criteria,headers=headers)
+            r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
             if r.status_code == HTTP_CODE_OK:
                 ret  = r.json()
                 if ret!=[]: 
                     user_id  = r.json()[0]['id']
                     update_users_link = users_link + user_id
         
-                    r = requests.put(update_users_link,json=new_user_info,headers=headers)
+                    r = requests.put(update_users_link,json=new_user_info,headers=headers,cert =(ssl_cert,ssl_key))
         
                     resp = create_json_response(HTTP_CODE_OK,"update_user_successful")
                 else:
@@ -607,15 +620,15 @@ class User(Resource):
             search_criteria = {
                 "username" : username
             }
-            r = requests.get(users_link,params=search_criteria,headers=headers)
+            r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
             if r.status_code == HTTP_CODE_OK:
                 ret  = r.json()
                 if ret!=[]: 
                     user_id  = r.json()[0]['id']
 
                     delete_users_link = users_link + user_id
-
-                    r = requests.delete(delete_users_link,headers=headers)
+                    logger.debug("delete user link:",delete_users_link)
+                    r = requests.delete(delete_users_link,headers=headers,cert =(ssl_cert,ssl_key))
 
                     resp = create_json_response(HTTP_CODE_OK,"delete_user_successful")
                 else:
@@ -668,12 +681,8 @@ class Rpt(Resource):
         logger.debug("Access token:", access_token)
 
 
-        try:
-            #Using KeycloakOpenID is not a good option as we need to provide client_id and client_secret per request, which is not secure as only relying on access_token
-            #keycloak_openid  = KeycloakOpenID(server_url=KEYCLOAK_SERVER,client_id=client_id, realm_name=KEYCLOAK_REALM, client_secret_key=client_secret,verify=True)
-            #rpt = keycloak_openid.entitlement(access_token, resource)
-            
-            r = requests.post(token_link,headers=headers,data=payload) # data is in x-www-form-urlencoded
+        try: 
+            r = requests.post(token_link,headers=headers,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
             response  = r.json()
 
             logger.debug("Response:",response)
@@ -705,15 +714,13 @@ class RptToken(Resource):
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'fail_to_verify_rpt', additional_json={"error" : "invalid json parameters"})
             return resp
 
-        #token_link = keycloak_server + "realms/" + keycloak_realm + "protocol/openid-connect/token/introspect"
         logger.debug('INTROSPECT RPT TOKENS')
-
+        token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token/introspect"
+        
         try:    
-            keycloak_openid  = KeycloakOpenID(server_url=keycloak_server,client_id=client_id, realm_name=keycloak_realm, client_secret_key=client_secret,verify=True)
-            token_rpt_info = keycloak_openid.introspect(token="",rpt=token, token_type_hint="requesting_party_token")
-    
-            #r = requests.post(token_link,headers=headers,auth=(client_id,client_secret),data=payload) # data is in x-www-form-urlencoded
-            #response  = r.json()
+            payload = {"token_type_hint":"requesting_party_token","token":token}
+            r = requests.post(token_link,auth=(client_id,client_secret),data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            token_rpt_info  = r.json()
 
             logger.debug("Response:",token_rpt_info)
 
@@ -737,7 +744,7 @@ class Groups(Resource):
             logger.info("Create group with input data => {0}".format(json_body))
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups"
             headers = {'Authorization': access_token}
-            r = requests.post(api_url,json=json_body,headers=headers)
+            r = requests.post(api_url,json=json_body,headers=headers,cert =(ssl_cert,ssl_key))
             logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
             if r.status_code == HTTP_CODE_CREATED:
                 resp = create_json_response(r.status_code,'group_creation_message',info_for_developer="New group created successfuly.")
@@ -757,7 +764,7 @@ class UsersGroups(Resource):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
         headers = {'Authorization': access_token}
-        r = requests.get(users_api_url,headers=headers)
+        r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
         logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             ret  = r.json()
@@ -768,7 +775,7 @@ class UsersGroups(Resource):
         group_id = ""
         groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
         headers = {'Authorization': access_token}
-        r = requests.get(groups_api_url,headers=headers)
+        r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
         logger.info("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
@@ -785,7 +792,7 @@ class UsersGroups(Resource):
         group_counts = 0
         groups_count_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/count"
         headers = {'Authorization': access_token}
-        r = requests.get(groups_count_api_url,headers=headers)
+        r = requests.get(groups_count_api_url,headers=headers,cert =(ssl_cert,ssl_key))
         logger.info("user groups count response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
@@ -810,7 +817,7 @@ class UsersGroups(Resource):
         headers = {'Authorization': access_token}
         user_group__api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/" + group_id
         headers = {'Authorization': access_token}
-        r = requests.put(user_group__api_url,headers=headers)
+        r = requests.put(user_group__api_url,headers=headers,cert =(ssl_cert,ssl_key))
         logger.info("user to group assignment response => \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         return r
     def put(self,username,groupname): # assign user to the group
@@ -863,7 +870,7 @@ class UsersGroups(Resource):
                 return resp
             delete_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/" + group_id
             headers = {'Authorization': access_token}
-            r = requests.delete(delete_api_url,headers=headers)
+            r = requests.delete(delete_api_url,headers=headers,cert =(ssl_cert,ssl_key))
             logger.info("unassigned group response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             if r.status_code == 204:
                 disp_message = " The group => {0} is unassigned from user => {1} ".format(groupname, username)
@@ -882,7 +889,7 @@ class Roles(Resource):
             roles_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles"
             access_token = request.headers.get('authorization')
             headers = {'Authorization': access_token}
-            r = requests.get(roles_api_url,headers=headers)
+            r = requests.get(roles_api_url,headers=headers,cert =(ssl_cert,ssl_key))
             logger.info("Get roles response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             rolesList =[]
             rolesData = {
@@ -903,7 +910,7 @@ class UserRole1(Resource):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
         headers = {'Authorization': access_token}
-        r = requests.get(users_api_url,headers=headers)
+        r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
         logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             ret  = r.json()
@@ -923,7 +930,7 @@ class UserRole1(Resource):
                 return resp
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
-            r = requests.get(api_url,headers=headers)
+            r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
             logger.info("Get user role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             rolesList =[]
             rolesData = {
@@ -947,7 +954,7 @@ class UserRole(Resource):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
         headers = {'Authorization': access_token}
-        r = requests.get(users_api_url,headers=headers)
+        r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
         logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             ret  = r.json()
@@ -958,7 +965,7 @@ class UserRole(Resource):
         role_id = ""
         role_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles/" + rolename 
         headers = {'Authorization': access_token}
-        r = requests.get(role_api_url,headers=headers)
+        r = requests.get(role_api_url,headers=headers,cert =(ssl_cert,ssl_key))
         logger.info("Get role id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
@@ -988,7 +995,7 @@ class UserRole(Resource):
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
             roles = [{"id": role_id, "name": rolename}]
-            r = requests.post(api_url,json=roles,headers=headers)
+            r = requests.post(api_url,json=roles,headers=headers,cert =(ssl_cert,ssl_key))
             logger.info("Delete role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             if r.status_code == 204:
                 disp_message = " The user: {0}, is granted the role of: {1}".format(username,rolename)
@@ -1021,7 +1028,7 @@ class UserRole(Resource):
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
             roles = [{"id":role_id, "name": rolename}]
-            r = requests.delete(api_url,json=roles,headers=headers)
+            r = requests.delete(api_url,json=roles,headers=headers,cert =(ssl_cert,ssl_key))
             logger.info("delete role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             if r.status_code == 204:
                 disp_message = " The role => {0} is now revoked from user => {1} ".format(roles, username)

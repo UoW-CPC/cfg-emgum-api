@@ -1,6 +1,6 @@
 from app import app, openidc
 from flask_restful import Api
-from parameters import emgum_api_url_context, keycloak_server,server_port,postgres_server,postgres_username,postgres_pwd,postgres_db
+from parameters import emgum_api_url_context, keycloak_server,server_port,postgres_server,postgres_username,postgres_pwd,postgres_db,ssl_cert,ssl_key
 from flask import render_template
 
 from healthcheck import HealthCheck
@@ -14,26 +14,27 @@ EMGUM_VERSION = "1.5"
 
 # add your own check function to the healthcheck
 def keycloak_available():
-	x = requests.get(keycloak_server+"realms/master/")
+	x = requests.get(keycloak_server+"realms/master/",cert =(ssl_cert,ssl_key))
 	ret = (x.status_code==HTTP_CODE_OK)
 	return ret, "Keycloak ok"
 
-def database_available():
-	try:
-		connection_str= "dbname='" + postgres_db + "' user='" + postgres_username + "' host='"+postgres_server+"' password='"+postgres_pwd+"' connect_timeout=1"
-		myConnection = psycopg2.connect(connection_str)
-		myConnection.close()
-		return True, "Keycloak database ok"
-	except:
-		return False
+#  temporary commented
+# def database_available():
+# 	try:
+# 		connection_str= "dbname='" + postgres_db + "' user='" + postgres_username + "' host='"+postgres_server+"' password='"+postgres_pwd+"' connect_timeout=1"
+# 		myConnection = psycopg2.connect(connection_str)#,sslcert=ssl_cert, sslkey=ssl_key)
+# 		myConnection.close()
+# 		return True, "Keycloak database ok"
+# 	except:
+# 		return False
 
 def emgum_api_available():
-	x = requests.get("http://127.0.0.1:"+server_port+emgum_api_url_context)
+	x = requests.get("http://127.0.0.1:"+server_port+emgum_api_url_context,cert =(ssl_cert,ssl_key))
 	ret = (x.status_code==HTTP_CODE_OK)
 	return ret, "EMGUM API ok"
 
 health.add_check(keycloak_available)
-health.add_check(database_available)
+#health.add_check(database_available)
 health.add_check(emgum_api_available)
 health.add_section("EMGUM API version", EMGUM_VERSION)
 
