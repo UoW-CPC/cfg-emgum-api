@@ -10,7 +10,7 @@ import psycopg2
 
 health = HealthCheck()
 HTTP_CODE_OK = 200
-EMGUM_VERSION = "1.5"
+EMGUM_VERSION = "1.7"
 
 # add your own check function to the healthcheck
 def keycloak_available():
