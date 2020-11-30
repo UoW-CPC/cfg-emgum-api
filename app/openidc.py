@@ -13,7 +13,7 @@ from app import app
 import random
 from random import randint
 from parameters import keycloak_server, keycloak_realm, ssl_key, ssl_cert
-#from posix import access
+from posix import access
 
 ##### CONSTANT VALUES
 # http codes
