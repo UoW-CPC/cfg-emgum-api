@@ -9,7 +9,7 @@ Id,Code,Message,
 8,succeed_to_get_user_info, Retrieve user information successfully!,
 9,succeed_to_log_out, User is logged out!,
 10,fail_to_log_out, Failed to log the user out. The refresh token may be invalid.,
-11,fail_to_get_tokens, Failed to retrieve tokens. Invalid user or OIDC client's credentials or client not allowed for direct access grants., 
+11,fail_to_get_tokens, Failed to retrieve tokens. Invalid user or OIDC client's credentials; or client not allowed for direct access grants; or invalid json input., 
 12,succeed_to_get_tokens, Retrieve tokens successfully!,
 13,invalid_token, Access token or client_id or client_secret is invalid.,
 14,valid_token, Access token is valid.,
@@ -30,3 +30,21 @@ Id,Code,Message,
 30,retrieve_client_failed, Failed to retrieve client. Please check the id of client and/or bearer token and/or check if API hostname is added as trusted host in OIDC server or not,
 31,endpoint_successful,Use the value of pk_endpoint to access the public_key for token verification.,
 32,llack_of_registration_token, Lack of registration token in headers.
+33,fail_to_get_rpt, Failed to retrieve rpt token.
+34,succeed_to_get_rpt, Succeed to retrieve rpt token.
+35,succeed_to_verify_rpt, Verify rpt token successfully!
+36,fail_to_verify_rpt, Failed to verify rpt token.
+37,succeed_to_exchange_token, Succeed to exchange token.
+38,fail_to_exchange_token, Failed to exchange token.
+39,group_creation_failed, Failed to create group.
+40,group_assignment_failed, Failed to assign user to the group.
+41,group_creation_message, Group creation:
+42,group_assignment_message, Group assignment: 
+43,role_grant_message, Role grant request:
+44,role_grant_failed, Role grant request failed:
+45,role_revoke_message, Role revoking:
+46,role_revoke_failed, Role failed:
+47,group_un_assignment_failed, Failed to un-assign user from the group.
+48,group_unassigned_message, Group un-assigned:
+49,retrieve_roles_successful, Roles retreived successfully!,
+50,retrieve_roles_failed, Roles retreival failed!,

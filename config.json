@@ -1,9 +1,0 @@
-{
-  "DEFAULT": 
-  {
-    "KEYCLOAK_SERVER": "http://[IP address with port or domain name of keycloak server]/auth/",
-    "KEYCLOAK_REALM": "[realm_name_here]",
-    "SUPERUSER_NAME" : "[user_name_of_admin_in_the_realm]" ,
-    "SUPERUSER_PASSWORD" : "[password_of_admin_in_the_realm]"
-  }
-}
