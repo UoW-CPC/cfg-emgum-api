@@ -1,5 +1,4 @@
 flask
 flask_restful
 py-healthcheck
-psycopg2-binary
 requests
