@@ -6,8 +6,6 @@ from flask import render_template
 from healthcheck import HealthCheck
 import requests
 
-import psycopg2
-
 health = HealthCheck()
 HTTP_CODE_OK = 200
 EMGUM_VERSION = "1.7"
@@ -17,16 +15,6 @@ def keycloak_available():
 	x = requests.get(keycloak_server+"realms/master/",cert =(ssl_cert,ssl_key))
 	ret = (x.status_code==HTTP_CODE_OK)
 	return ret, "Keycloak ok"
-
-#  temporary commented
-# def database_available():
-# 	try:
-# 		connection_str= "dbname='" + postgres_db + "' user='" + postgres_username + "' host='"+postgres_server+"' password='"+postgres_pwd+"' connect_timeout=1"
-# 		myConnection = psycopg2.connect(connection_str)#,sslcert=ssl_cert, sslkey=ssl_key)
-# 		myConnection.close()
-# 		return True, "Keycloak database ok"
-# 	except:
-# 		return False
 
 def emgum_api_available():
 	x = requests.get("http://127.0.0.1:"+server_port+emgum_api_url_context,cert =(ssl_cert,ssl_key))
