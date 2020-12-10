@@ -533,11 +533,9 @@ class User(Resource):
 		users_link = KEYCLOAK_SERVER + "admin/realms/" + KEYCLOAK_REALM + "/users"
 
 		try:
-			#keycloak_admin = KeycloakAdmin(server_url=KEYCLOAK_SERVER,username=config['DEFAULT']['MANAGER_USERNAME'],password=config['DEFAULT']['MANAGER_PASSWORD'],realm_name=KEYCLOAK_REALM,verify=True)
 			access_token = retrieve_realm_admin_access_token()
 			headers = {'Authorization': 'Bearer ' + access_token}
 
-			#headers = {"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJHRGF2RnlXWXlBd2tWRFBpWFFVZnFsdTZJVjhxMldXZVNRQ2praW1WS1RJIn0.eyJqdGkiOiIyNWRhNTkzMy00OTIzLTQwMTItOTdmNC1iYzVmNGZmMDYxYWEiLCJleHAiOjE1MzY4NDAwODYsIm5iZiI6MCwiaWF0IjoxNTM2ODM5Nzg2LCJpc3MiOiJodHRwOi8vMzEuMTcxLjI0NS43NDo4MDgwL2F1dGgvcmVhbG1zL3JlYWxtMDEiLCJhdWQiOiJhZG1pbi1jbGkiLCJzdWIiOiI4MjlhOWE1YS0xMzUxLTQ4ZWYtOTlkNi1hZmRlNjI3YjVmZTciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJhZG1pbi1jbGkiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIyODU5OWM4Yi1jYTllLTQyZjctYmQ3ZS1lNzE5NzUxZmZiMDgiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbXSwicmVzb3VyY2VfYWNjZXNzIjp7fSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhZG1pbjAxIn0.Mv8EoGLbDCvtqL8MJ5op1tJUKVWZeyOI2v-4_F8CuHjcp3V8hRz_kKAqaGoKiKHWm0Usf8iHtdECeAnQLYjusiNJh0IinmSjEXj0Cmi9kjHw62xfZk_I8MQtgfOaQVCSy9-cxuTSmbJoVv531TDzOojY_2KI4ul_hZ78Dtk6eKTz1RiiCpIbxnSat1NPWWCJs-wi5Xd9r8a5NmPOfSKlFKFnTT9zWVuxeGLehky-7R7wo7tovIDekJhRtmuNOyLxKzdLKxjpz7VjB_TVhjuJ7xQBKQA4ypEqL9C2K7PCPydpy-kSFEX6_dL8cDt79zFvHEytOt1Rw828PA6ZylKo-w"}
 			search_criteria = {
 				"username" : username
 			}
