@@ -22,7 +22,6 @@ def emgum_api_available():
 	return ret, "EMGUM API ok"
 
 health.add_check(keycloak_available)
-#health.add_check(database_available)
 health.add_check(emgum_api_available)
 health.add_section("EMGUM API version", EMGUM_VERSION)
 
