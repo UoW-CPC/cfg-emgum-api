@@ -443,15 +443,6 @@ class Tokens(Resource):
 ### USERINFO
 class UserInfo(Resource):
     def get(self,token): # get user information. Token = access token.
-        # will be deleted
-        parser = reqparse.RequestParser()
-        parser.add_argument('client_id')
-        parser.add_argument('client_secret')
-        args = parser.parse_args()
-        client_id = args['client_id']
-        client_secret = args['client_secret']
-        # end-will be deleted
-        
         try:
             userinfo_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/userinfo"
             logger.debug("userinfo link:",userinfo_link)
