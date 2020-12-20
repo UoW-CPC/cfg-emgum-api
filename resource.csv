@@ -45,6 +45,16 @@ Id,Code,Message,
 45,role_revoke_message, Role revoking:
 46,role_revoke_failed, Role failed:
 47,group_un_assignment_failed, Failed to un-assign user from the group.
-48,group_unassigned_message, Group un-assigned:
-49,retrieve_roles_successful, Roles retreived successfully!,
-50,retrieve_roles_failed, Roles retreival failed!,
+48,group_unassigned_message,Group un-assigned:
+49,retrieve_roles_successful,Roles retrieved successfully!,
+50,retrieve_roles_failed,Roles retreival failed!,
+51,group_update_failed,Group update failed:
+52,group_update_message,Group updated successfully:
+53,groups_retreival_successful,Groups retrieval is successful!
+54,groups_retreival_failed,Groups retrieval is failed!
+55,group_retreival_successful,Group retrieval is successful
+56,group_retreival_failed,Group retrieval is failed!
+57,group_members_retreival_successful, Group's members retrieval is successful!
+58,group_members_retreival_failed, Group's users retreival is failed!
+59,user_group_retreival_failed,User's group retrieval is failed!
+60,user_group_retreival_successful,User's group retrieval successful!
