@@ -12,7 +12,7 @@ import logging
 from app import app
 import random
 from random import randint
-from parameters import keycloak_server, keycloak_realm, ssl_key, ssl_cert
+from parameters import keycloak_server, keycloak_realm, ssl_key, ssl_cert, pass_auth_cert
 #from posix import access
 
 ##### CONSTANT VALUES
@@ -180,7 +180,11 @@ class Client(Resource):
 
         received_response = False
         try:
-            r = requests.get(clients_link, headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(clients_link, headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(clients_link, headers=headers)
             client = r.json()
 
             received_response = True 
@@ -219,7 +223,11 @@ class Client(Resource):
 
         
         try:
-            r = requests.put(clients_link, json = json_body, headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.put(clients_link, json = json_body, headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.put(clients_link, json = json_body, headers=headers)
 
             filtered_response = dict(marshal(json.loads(r.text), client_model_view)) # filter the response to match with client_model_view
             filtered_none_response = dict(filter(lambda item: item[1] is not None, filtered_response.items())) # remove all fields with value None
@@ -251,8 +259,13 @@ class Client(Resource):
         logger.debug("client_id: ", client_id)
         logger.debug("clients_link: ", clients_link)
 
-        try:        
-            r = requests.delete(clients_link, headers=headers,cert =(ssl_cert,ssl_key))
+        try:
+            r = None
+            if pass_auth_cert == True:
+                r = requests.delete(clients_link, headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.delete(clients_link, headers=headers)
+
             resp = create_json_response(HTTP_CODE_OK,'delete_client_successful')
             return resp
         except Exception as e:
@@ -283,7 +296,11 @@ class Clients(Resource):
 
         # Send a request to keycloak server to dynamically register as keycloak client
         try:
-            r = requests.post(request_link, json = json_body, headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(request_link, json = json_body, headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.post(request_link, json = json_body, headers=headers)
             response = r.json()
 
             logger.debug("response: ",response)
@@ -313,7 +330,11 @@ class Token(Resource):
         try:
             token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token"
             payload = {"client_id":client_id, "client_secret": client_secret, "refresh_token": token, "grant_type":"refresh_token"} 
-            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            else:
+                r = requests.post(token_link,data=payload) # data is in x-www-form-urlencoded
             new_token  = r.json()
            
             logger.debug('new token: ', new_token)   
@@ -332,7 +353,12 @@ class Token(Resource):
         try:
             token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/logout"
             payload = {"client_id":client_id, "client_secret": client_secret, "refresh_token": token} 
-            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            else:
+                r = requests.post(token_link,data=payload)
             
             resp = create_json_response(HTTP_CODE_OK,'succeed_to_log_out')
             
@@ -354,7 +380,11 @@ class Token(Resource):
         try:
             token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token/introspect"
             payload = {"client_id":client_id, "client_secret": client_secret, "token": token} 
-            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            else:
+                r = requests.post(token_link,data=payload)
             token_info  = r.json()
             filtered_token_info = dict(marshal(token_info,token_verification_view))
             
@@ -397,7 +427,11 @@ class Token(Resource):
         logger.debug("json body: ", json_body)
 
         try:
-            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            else:
+                r = requests.post(token_link,data=payload)
             response  = r.json()
 
             logger.debug("Response:",response)
@@ -430,7 +464,11 @@ class Tokens(Resource):
     
             token_link = keycloak_server + "realms/" + keycloak_realm + "/protocol/openid-connect/token"
             
-            r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(token_link,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            else:
+                r = requests.post(token_link,data=payload)
             response  = r.json()
             resp = create_json_response(HTTP_CODE_OK,'succeed_to_get_tokens',additional_json=response)
             return resp
@@ -449,8 +487,11 @@ class UserInfo(Resource):
             
             access_token = "Bearer " + token
             headers = {"Authorization": access_token}
-           
-            r = requests.get(userinfo_link,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(userinfo_link,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(userinfo_link,headers=headers)
             logger.debug("response:",r.text)
             userinfo = r.json()
             
@@ -499,7 +540,11 @@ class Users(Resource):
             
             headers = {'Authorization': access_token}
 
-            r = requests.post(create_user_link,json=new_user,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(create_user_link,json=new_user,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.post(create_user_link,json=new_user,headers=headers)
 
             logger.debug('response: ', r.status_code, '-', r.text)
 
@@ -530,8 +575,11 @@ class User(Resource):
             search_criteria = {
                 "username" : username
             }
-
-            r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(users_link,params=search_criteria,headers=headers)
 
             logger.debug('RETRIEVE A USER')
             logger.debug("response:",r)
@@ -578,15 +626,21 @@ class User(Resource):
             search_criteria = {
                 "username" : username
             }
-
-            r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(users_link,params=search_criteria,headers=headers)
             if r.status_code == HTTP_CODE_OK:
                 ret  = r.json()
                 if ret!=[]: 
                     user_id  = r.json()[0]['id']
                     update_users_link = users_link + user_id
-        
-                    r = requests.put(update_users_link,json=new_user_info,headers=headers,cert =(ssl_cert,ssl_key))
+                    r = None
+                    if pass_auth_cert == True:
+                        r = requests.put(update_users_link,json=new_user_info,headers=headers,cert =(ssl_cert,ssl_key))
+                    else:
+                        r = requests.put(update_users_link,json=new_user_info,headers=headers)
         
                     resp = create_json_response(HTTP_CODE_OK,"update_user_successful")
                 else:
@@ -611,7 +665,11 @@ class User(Resource):
             search_criteria = {
                 "username" : username
             }
-            r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(users_link,params=search_criteria,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(users_link,params=search_criteria,headers=headers)
             if r.status_code == HTTP_CODE_OK:
                 ret  = r.json()
                 if ret!=[]: 
@@ -619,7 +677,11 @@ class User(Resource):
 
                     delete_users_link = users_link + user_id
                     logger.debug("delete user link:",delete_users_link)
-                    r = requests.delete(delete_users_link,headers=headers,cert =(ssl_cert,ssl_key))
+                    r = None
+                    if pass_auth_cert == True:
+                        r = requests.delete(delete_users_link,headers=headers,cert =(ssl_cert,ssl_key))
+                    else:
+                        r = requests.delete(delete_users_link,headers=headers)
 
                     resp = create_json_response(HTTP_CODE_OK,"delete_user_successful")
                 else:
@@ -642,7 +704,11 @@ class UserGroups(Resource):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
         headers = {'Authorization': access_token}
-        r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(users_api_url,headers=headers)
         logger.debug("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             ret  = r.json()
@@ -654,7 +720,11 @@ class UserGroups(Resource):
         access_token = request.headers.get('authorization')
         user_groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups"
         headers = {'Authorization': access_token}
-        grp_result = requests.get(user_groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        grp_result = None
+        if pass_auth_cert == True:
+            grp_result = requests.get(user_groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            grp_result = requests.get(user_groups_api_url,headers=headers)
         logger.info("User groups response. \n status_code => {0} \n response_message => {1}".format(grp_result.status_code,grp_result.text))
         if grp_result.status_code == HTTP_CODE_OK:
             userGrps = grp_result.json()
@@ -662,7 +732,11 @@ class UserGroups(Resource):
                 grp_id = grp["id"]
                 grp_name = grp["name"]
                 group_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + grp_id
-                r = requests.get(group_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+                r = None
+                if pass_auth_cert == True:
+                    r = requests.get(group_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+                else:
+                    r = requests.get(group_api_url,headers=headers)
                 logger.info("Get group server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
                 if r.status_code == HTTP_CODE_OK:
                     groupResult = r.json()
@@ -676,7 +750,11 @@ class UserGroups(Resource):
         access_token = request.headers.get('authorization')
         group_members_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + grp_id + "/members"
         headers = {'Authorization': access_token}
-        mem_result = requests.get(group_members_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        mem_result = None
+        if pass_auth_cert == True:
+            mem_result = requests.get(group_members_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            mem_result = requests.get(group_members_api_url,headers=headers)
         logger.info("Group's members response. \n status_code => {0} \n response_message => {1}".format(mem_result.status_code,mem_result.text))
         lst_admin_members = []
         if mem_result.status_code == HTTP_CODE_OK:
@@ -684,7 +762,11 @@ class UserGroups(Resource):
             for member in grpMembers:
                 member_id = member["id"]
                 roles_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + member_id + "/role-mappings/realm"
-                r = requests.get(roles_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+                r = None
+                if pass_auth_cert == True:
+                    r = requests.get(roles_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+                else:
+                    r = requests.get(roles_api_url,headers=headers)
                 logger.info("Get roles server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
                 if r.status_code == HTTP_CODE_OK:
                     roleResult = r.json()
@@ -772,8 +854,12 @@ class Rpt(Resource):
         logger.debug("Access token:", access_token)
 
 
-        try: 
-            r = requests.post(token_link,headers=headers,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+        try:
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(token_link,headers=headers,data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            else:
+                r = requests.post(token_link,headers=headers,data=payload)
             response  = r.json()
 
             logger.debug("Response:",response)
@@ -810,7 +896,11 @@ class RptToken(Resource):
         
         try:    
             payload = {"token_type_hint":"requesting_party_token","token":token}
-            r = requests.post(token_link,auth=(client_id,client_secret),data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(token_link,auth=(client_id,client_secret),data=payload,cert =(ssl_cert,ssl_key)) # data is in x-www-form-urlencoded
+            else:
+                r = requests.post(token_link,auth=(client_id,client_secret),data=payload)
             token_rpt_info  = r.json()
 
             logger.debug("Response:",token_rpt_info)
@@ -834,7 +924,11 @@ class Groups(Resource):
             logger.info("Get groups")
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups"
             headers = {'Authorization': access_token}
-            r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(api_url,headers=headers)
             logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
             if r.status_code == HTTP_CODE_OK:
                 allGroups = r.json()
@@ -860,7 +954,11 @@ class Groups(Resource):
             logger.info("Create group with input data => {0}".format(json_body))
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups"
             headers = {'Authorization': access_token}
-            r = requests.post(api_url,json=json_body,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(api_url,json=json_body,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.post(api_url,json=json_body,headers=headers)
             logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
             if r.status_code == HTTP_CODE_CREATED:
                 resp = create_json_response(r.status_code,'group_creation_message',info_for_developer="New group created successfuly.")
@@ -879,7 +977,11 @@ class Group(Resource):
         group_id = ""
         groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
         headers = {'Authorization': access_token}
-        r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(groups_api_url,headers=headers)
         logger.info("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
@@ -904,7 +1006,11 @@ class Group(Resource):
                 return resp
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + group_id
             headers = {'Authorization': access_token}
-            r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(api_url,headers=headers)
             logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
             if r.status_code == HTTP_CODE_OK:
                 groupResult = r.json()
@@ -935,7 +1041,11 @@ class Group(Resource):
                 return resp
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + group_id
             headers = {'Authorization': access_token}
-            r = requests.put(api_url,json=json_body,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.put(api_url,json=json_body,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.put(api_url,json=json_body,headers=headers)
             logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
             if r.status_code == 204:
                 resp = create_json_response(r.status_code,'group_update_message',info_for_developer=" Group updated successfuly.")
@@ -952,7 +1062,11 @@ class GroupMembers(Resource):
         group_id = ""
         groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
         headers = {'Authorization': access_token}
-        r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(groups_api_url,headers=headers)
         logger.info("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
@@ -977,7 +1091,11 @@ class GroupMembers(Resource):
                 return resp
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + group_id + "/members"
             headers = {'Authorization': access_token}
-            r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(api_url,headers=headers)
             logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
             if r.status_code == HTTP_CODE_OK:
                 memberResults = r.json()
@@ -1006,7 +1124,11 @@ class UsersGroups(Resource):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
         headers = {'Authorization': access_token}
-        r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(users_api_url,headers=headers)
         logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             ret  = r.json()
@@ -1017,7 +1139,11 @@ class UsersGroups(Resource):
         group_id = ""
         groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
         headers = {'Authorization': access_token}
-        r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(groups_api_url,headers=headers)
         logger.info("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
@@ -1034,7 +1160,11 @@ class UsersGroups(Resource):
         group_counts = 0
         groups_count_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/count"
         headers = {'Authorization': access_token}
-        r = requests.get(groups_count_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(groups_count_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(groups_count_api_url,headers=headers)
         logger.info("user groups count response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
@@ -1059,7 +1189,11 @@ class UsersGroups(Resource):
         headers = {'Authorization': access_token}
         user_group__api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/" + group_id
         headers = {'Authorization': access_token}
-        r = requests.put(user_group__api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.put(user_group__api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.put(user_group__api_url,headers=headers)
         logger.info("user to group assignment response => \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         return r
     def put(self,username,groupname): # assign user to the group
@@ -1112,7 +1246,11 @@ class UsersGroups(Resource):
                 return resp
             delete_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups/" + group_id
             headers = {'Authorization': access_token}
-            r = requests.delete(delete_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.delete(delete_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.delete(delete_api_url,headers=headers)
             logger.info("unassigned group response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             if r.status_code == 204:
                 disp_message = " The group => {0} is unassigned from user => {1} ".format(groupname, username)
@@ -1131,7 +1269,11 @@ class Roles(Resource):
             roles_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles"
             access_token = request.headers.get('authorization')
             headers = {'Authorization': access_token}
-            r = requests.get(roles_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(roles_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(roles_api_url,headers=headers)
             logger.info("Get roles response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             rolesList =[]
             rolesData = {
@@ -1152,7 +1294,11 @@ class UserRoles(Resource):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
         headers = {'Authorization': access_token}
-        r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(users_api_url,headers=headers)
         logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             ret  = r.json()
@@ -1172,7 +1318,11 @@ class UserRoles(Resource):
                 return resp
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
-            r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.get(api_url,headers=headers)
             logger.info("Get user role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             rolesList =[]
             rolesData = {
@@ -1196,7 +1346,11 @@ class UserRole(Resource):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
         headers = {'Authorization': access_token}
-        r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(users_api_url,headers=headers)
         logger.info("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             ret  = r.json()
@@ -1207,7 +1361,11 @@ class UserRole(Resource):
         role_id = ""
         role_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/roles/" + rolename 
         headers = {'Authorization': access_token}
-        r = requests.get(role_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        r = None
+        if pass_auth_cert == True:
+            r = requests.get(role_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        else:
+            r = requests.get(role_api_url,headers=headers)
         logger.info("Get role id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
         if r.status_code == HTTP_CODE_OK:
             result_json = r.json()
@@ -1237,7 +1395,11 @@ class UserRole(Resource):
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
             roles = [{"id": role_id, "name": rolename}]
-            r = requests.post(api_url,json=roles,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.post(api_url,json=roles,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.post(api_url,json=roles,headers=headers)
             logger.info("Delete role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             if r.status_code == 204:
                 disp_message = " The user: {0}, is granted the role of: {1}".format(username,rolename)
@@ -1270,7 +1432,11 @@ class UserRole(Resource):
             api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/role-mappings/realm"
             headers = {'Authorization': access_token}
             roles = [{"id":role_id, "name": rolename}]
-            r = requests.delete(api_url,json=roles,headers=headers,cert =(ssl_cert,ssl_key))
+            r = None
+            if pass_auth_cert == True:
+                r = requests.delete(api_url,json=roles,headers=headers,cert =(ssl_cert,ssl_key))
+            else:
+                r = requests.delete(api_url,json=roles,headers=headers)
             logger.info("delete role response: \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
             if r.status_code == 204:
                 disp_message = " The role => {0} is now revoked from user => {1} ".format(roles, username)

@@ -18,3 +18,4 @@ postgres_db = os.getenv("DB_DATABASE")
 
 ssl_cert = os.getenv("SSL_CERT")
 ssl_key  = os.getenv("SSL_KEY")
+pass_auth_cert = True if os.getenv("PASS_AUTH_CERT","false") == "true" else False
