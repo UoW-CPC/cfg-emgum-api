@@ -49,6 +49,7 @@ api.add_resource(openidc.UserInfo,emgum_api_url_context + 'userinfo/<token>')
 
 api.add_resource(openidc.Users,emgum_api_url_context + 'users')
 api.add_resource(openidc.User,emgum_api_url_context + 'users/<username>')
+api.add_resource(openidc.UserGroups,emgum_api_url_context + 'users/<username>/group')
 
 api.add_resource(openidc.Endpoint,emgum_api_url_context + 'endpoint')
 
@@ -56,9 +57,12 @@ api.add_resource(openidc.Rpt,emgum_api_url_context + 'rpt')
 api.add_resource(openidc.RptToken,emgum_api_url_context + 'rpt/<token>')
 
 api.add_resource(openidc.Groups,emgum_api_url_context + 'groups')
+api.add_resource(openidc.Group,emgum_api_url_context + 'groups/<groupname>')
+api.add_resource(openidc.GroupMembers,emgum_api_url_context + 'groups/<groupname>/members')
+
 api.add_resource(openidc.UsersGroups,emgum_api_url_context + 'users/<username>/groups/<groupname>')
 api.add_resource(openidc.UserRole,emgum_api_url_context + 'users/<username>/roles/<rolename>')
-api.add_resource(openidc.UserRole1,emgum_api_url_context + 'users/<username>/roles')
+api.add_resource(openidc.UserRoles,emgum_api_url_context + 'users/<username>/roles')
 
 api.add_resource(openidc.Roles,emgum_api_url_context + 'roles')
 

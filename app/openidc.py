@@ -636,6 +636,106 @@ class User(Resource):
             return resp
 ### END - USER
 
+### UserGroups
+class UserGroups(Resource):
+    def get_user_id(self,access_token,username):
+        user_id = ""
+        users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
+        headers = {'Authorization': access_token}
+        r = requests.get(users_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        logger.debug("Get user id response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            ret  = r.json()
+            if ret!=[]: 
+                user_id  = r.json()[0]['id']
+        return user_id,r
+    def get_user_group(self,access_token,user_id):
+        logger.debug("Get user group")
+        access_token = request.headers.get('authorization')
+        user_groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + user_id + "/groups"
+        headers = {'Authorization': access_token}
+        grp_result = requests.get(user_groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        logger.info("User groups response. \n status_code => {0} \n response_message => {1}".format(grp_result.status_code,grp_result.text))
+        if grp_result.status_code == HTTP_CODE_OK:
+            userGrps = grp_result.json()
+            for grp in userGrps:
+                grp_id = grp["id"]
+                grp_name = grp["name"]
+                group_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + grp_id
+                r = requests.get(group_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+                logger.info("Get group server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
+                if r.status_code == HTTP_CODE_OK:
+                    groupResult = r.json()
+                    grp_attributes = groupResult["attributes"]
+                else:
+                    grp_attributes = {}
+                return grp_id,grp_name,grp_attributes,grp_result
+        return "","",{},grp_result
+    def get_group_admin_members(self,access_token,grp_id):
+        logger.debug("Get group admin members")
+        access_token = request.headers.get('authorization')
+        group_members_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + grp_id + "/members"
+        headers = {'Authorization': access_token}
+        mem_result = requests.get(group_members_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        logger.info("Group's members response. \n status_code => {0} \n response_message => {1}".format(mem_result.status_code,mem_result.text))
+        lst_admin_members = []
+        if mem_result.status_code == HTTP_CODE_OK:
+            grpMembers = mem_result.json()
+            for member in grpMembers:
+                member_id = member["id"]
+                roles_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users/" + member_id + "/role-mappings/realm"
+                r = requests.get(roles_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+                logger.info("Get roles server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
+                if r.status_code == HTTP_CODE_OK:
+                    roleResult = r.json()
+                    for role in roleResult:
+                        role_name = role["name"]
+                        if role_name.lower() == "org_admin" or role_name.lower() == "org_owner":
+                            memberDict = {}
+                            memberDict["username"] = member["username"]
+                            memberDict["firstName"] = member["firstName"]
+                            memberDict["lastName"] = member["lastName"]
+                            memberDict["email"] = member["email"]
+                            memberDict["enabled"] = member["enabled"]
+                            lst_admin_members.append(memberDict)
+                            break
+        return lst_admin_members, mem_result
+    def get(self,username):
+        try:
+            logger.debug("Get user ({0}) groups".format(username))
+            access_token = request.headers.get('authorization')
+            # Get user id for the given username
+            user_id, res_user = self.get_user_id(access_token,username)
+            if res_user.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'user_group_retreival_failed',info_for_developer=" Please ensure that the provided access token is valid")
+                return resp
+            if user_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'user_group_retreival_failed', info_for_developer =" User with given name does not exist.")
+                return resp
+            # Get User's group 
+            grp_id, grp_name, grp_attributes, grp_result = self.get_user_group(access_token,user_id)
+            if grp_result.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'user_group_retreival_failed',info_for_developer=" Please ensure that the provided access token is valid")
+                return resp
+            if grp_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'user_group_retreival_failed', info_for_developer=" The specified user does not belong to any organisation/group")
+                return resp
+            # Get admin/owner members of user's group
+            adminsList, mem_result = self.get_group_admin_members(access_token,grp_id)
+            if mem_result.status_code == HTTP_CODE_OK:
+                grpDict = {}
+                grpDict["name"] = grp_name
+                grpDict["attributes"] = grp_attributes
+                grpDict["admins"] = adminsList
+                resp = create_json_response(HTTP_CODE_OK,'user_group_retreival_successful', additional_json=grpDict)
+                return resp
+            else:
+                resp = create_json_response(mem_result.status_code,'user_group_retreival_failed', info_for_developer=mem_result.text)
+                return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of group assignment request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=e)
+            return resp
 ### ENDPOINT
 class Endpoint(Resource):
     def get(self): # return endpoint of public key
@@ -728,6 +828,31 @@ class RptToken(Resource):
 
 ### Groups
 class Groups(Resource):
+    def get(self):
+        try:         
+            access_token = request.headers.get('authorization')
+            logger.info("Get groups")
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups"
+            headers = {'Authorization': access_token}
+            r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
+            if r.status_code == HTTP_CODE_OK:
+                allGroups = r.json()
+                namesList = []
+                for grp in allGroups:
+                    namesList.append(grp["name"])
+                grpDict = {}
+                grpDict["groups"] = namesList
+                resp = create_json_response(HTTP_CODE_OK,'groups_retreival_successful', additional_json=grpDict)
+            elif r.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'groups_retreival_failed',info_for_developer=" Please ensure that the provided access token is valid")
+            else:
+                resp = create_json_response(r.status_code,'groups_retreival_failed',info_for_developer=r.text)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of Groups Get request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'groups_retreival_failed',additional_json=r)
+            return resp
     def post(self):
         try:         
             json_body = request.json    
@@ -749,6 +874,132 @@ class Groups(Resource):
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_creation_failed',additional_json=r)
             return resp
 
+class Group(Resource):
+    def get_group_id(self,access_token,groupname):
+        group_id = ""
+        groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
+        headers = {'Authorization': access_token}
+        r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        logger.info("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            result_json = r.json()
+            for item in result_json:
+                if item["name"] == groupname:
+                    group_id = item["id"]
+                    logger.info("Group search result => Group found and the id is => {0}".format(group_id))
+                    break
+        return group_id,r
+    
+    def get(self,groupname):
+        try:         
+            access_token = request.headers.get('authorization')
+            logger.info("Get group")
+            # Get group Id
+            group_id, res_group = self.get_group_id(access_token,groupname)
+            if res_group.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_retreival_successful',info_for_developer=" Please ensure that the provided access token is valid")
+                return resp
+            if group_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_retreival_failed', info_for_developer =" Group with given name does not exist.")
+                return resp
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + group_id
+            headers = {'Authorization': access_token}
+            r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
+            if r.status_code == HTTP_CODE_OK:
+                groupResult = r.json()
+                grpDict = {}
+                grpDict["name"] = groupResult["name"]
+                grpDict["attributes"] = groupResult["attributes"]
+                resp = create_json_response(HTTP_CODE_OK,'group_retreival_successful', additional_json=grpDict)
+            else:
+                resp = create_json_response(r.status_code,'group_retreival_failed',info_for_developer=r.text)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of Group get request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_retreival_failed',additional_json=r)
+            return resp
+
+    def put(self,groupname):
+        try:         
+            json_body = request.json
+            access_token = request.headers.get('authorization')
+            logger.info("Update group with input data => {0}".format(json_body))
+            # Get group Id
+            group_id, res_group = self.get_group_id(access_token,groupname)
+            if res_group.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_update_failed',info_for_developer=" Please ensure that the provided access token is valid")
+                return resp
+            if group_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_update_failed', info_for_developer =" Group with given name does not exist.")
+                return resp
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + group_id
+            headers = {'Authorization': access_token}
+            r = requests.put(api_url,json=json_body,headers=headers,cert =(ssl_cert,ssl_key))
+            logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
+            if r.status_code == 204:
+                resp = create_json_response(r.status_code,'group_update_message',info_for_developer=" Group updated successfuly.")
+            else:
+                resp = create_json_response(r.status_code,'group_update_failed',info_for_developer=r.text)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of Group put request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_update_failed',additional_json=r)
+            return resp
+### GroupUsers
+class GroupMembers(Resource):
+    def get_group_id(self,access_token,groupname):
+        group_id = ""
+        groups_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups?search=" + groupname
+        headers = {'Authorization': access_token}
+        r = requests.get(groups_api_url,headers=headers,cert =(ssl_cert,ssl_key))
+        logger.info("Get group response. \n status_code => {0} \n response_message => {1}".format(r.status_code,r.text))
+        if r.status_code == HTTP_CODE_OK:
+            result_json = r.json()
+            for item in result_json:
+                if item["name"] == groupname:
+                    group_id = item["id"]
+                    logger.info("Group search result => Group found and the id is => {0}".format(group_id))
+                    break
+        return group_id,r
+    
+    def get(self,groupname):
+        try:         
+            access_token = request.headers.get('authorization')
+            logger.info("Get group members")
+            # Get group Id
+            group_id, res_group = self.get_group_id(access_token,groupname)
+            if res_group.status_code == HTTP_CODE_UNAUTHORIZED:
+                resp = create_json_response(HTTP_CODE_UNAUTHORIZED,'group_members_retreival_successful',info_for_developer=" Please ensure that the provided access token is valid")
+                return resp
+            if group_id == "":
+                resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_members_retreival_failed', info_for_developer =" Group with given name does not exist.")
+                return resp
+            api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/groups/" + group_id + "/members"
+            headers = {'Authorization': access_token}
+            r = requests.get(api_url,headers=headers,cert =(ssl_cert,ssl_key))
+            logger.info("Server response: \n response code => {0} \n returned message => {1}".format(r.status_code, r.text))
+            if r.status_code == HTTP_CODE_OK:
+                memberResults = r.json()
+                membersList = []
+                for member in memberResults:
+                    memberDict = {}
+                    memberDict["username"] = member["username"]
+                    memberDict["firstName"] = member["firstName"]
+                    memberDict["lastName"] = member["lastName"]
+                    memberDict["email"] = member["email"]
+                    memberDict["enabled"] = member["enabled"]
+                    membersList.append(memberDict)
+                membersDict = {}
+                membersDict["members"] = membersList
+                resp = create_json_response(HTTP_CODE_OK,'group_members_retreival_successful', additional_json=membersDict)
+            else:
+                resp = create_json_response(r.status_code,'group_members_retreival_failed',info_for_developer=r.text)
+            return resp
+        except Exception as e:
+            logger.error("Exception occured during the processing of Group get request. The details of the exception are as follows: \n {0}".format(e))
+            resp = create_json_response(HTTP_CODE_BAD_REQUEST,'group_members_retreival_failed',additional_json=r)
+            return resp
 ### Users-Groups
 class UsersGroups(Resource):
     def get_user_id(self,access_token,username):
@@ -896,7 +1147,7 @@ class Roles(Resource):
             logger.error(e)
             resp = create_json_response(HTTP_CODE_BAD_REQUEST,"retrieve_roles_failed",additional_json=r)
             return resp
-class UserRole1(Resource):
+class UserRoles(Resource):
     def get_user_id(self,access_token,username):
         user_id = ""
         users_api_url = keycloak_server + "admin/realms/" + keycloak_realm + "/users?username=" + username 
