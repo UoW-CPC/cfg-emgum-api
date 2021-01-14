@@ -8,7 +8,7 @@ import logging
 
 #keycloak_server = os.getenv("KEYCLOAK_SERVER","https://api.emgora.eu/v1/emgum/server/auth/")
 keycloak_server = os.getenv("KEYCLOAK_SERVER","https://crazykiko.net/v1/emgum/server/auth/")
-keycloak_realm = os.getenv("KEYCOLAK_REALM","cfg")
+keycloak_realm = os.getenv("KEYCLOAK_REALM","cfg")
 server_port = os.getenv("API_PORT", "8080")
 emgum_api_url_context = os.getenv("URL_CONTEXT", "/emgum/api/v1.0/")
 postgres_server = os.getenv("DB_ADDR")
