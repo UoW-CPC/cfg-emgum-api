@@ -8,7 +8,7 @@ import json
 http_code_ok = 200
 http_code_created = 201
 #http_code_bad_request = 404
-API_URL = "https://api.emgora.eu/v1/emgum/api"
+API_URL = "http://127.0.0.1:8081/emgum/api/v1.0"
 
 class cfg_test_lib(object):
 
@@ -70,7 +70,7 @@ class cfg_test_lib(object):
     
     def retrieve_all_tokens(self, client_id, client_secret, user_name, password):
         url     = API_URL + '/tokens'
-        payload = {'username': user_name, 'password': password, "client_id": client_id, "client_secret": client_secret}
+        payload = {'username': user_name, 'password': password, "grant_type" : "password", "client_id": client_id, "client_secret": client_secret}
         res = requests.post(url, json=payload)
         json_data = json.loads(res.text)
         self._status = json_data['code']
@@ -159,3 +159,85 @@ class cfg_test_lib(object):
         res = requests.post(url,json=payload)
         json_data = json.loads(res.text)
         self._status = json_data['code']
+        
+    def create_a_group(self, access_token, group_name, group_attributes):
+        url     = API_URL + "/groups"
+        header = {'Authorization': 'Bearer ' + access_token}
+        payload = {'name': group_name, 'attributes': json.loads(group_attributes)}
+        res = requests.post(url,json=payload, headers=header)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        
+    def retrieve_all_group(self, access_token):
+        url     = API_URL + "/groups"
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.get(url,headers=header)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        
+    def retrieve_a_group(self, access_token, group_name):
+        url     = API_URL + "/groups/" + group_name
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.get(url,headers=header)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        self._data = json_data['attributes']
+        
+    def update_a_group(self, access_token, group_name, group_attributes):
+        url     = API_URL + "/groups/" + group_name
+        header = {'Authorization': 'Bearer ' + access_token}
+        payload = {'attributes': json.loads(group_attributes)}
+        print("paypload:{}".format(payload))
+        res = requests.put(url,json=payload, headers=header)
+        self._status = res.status_code
+        
+    def assign_user_to_group(self, access_token, username, group_name):
+        url     = API_URL + "/users/" + username + "/groups/" + group_name
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.put(url,headers=header)
+        self._status = res.status_code
+        
+    def revoke_user_from_group(self, access_token, username, group_name):
+        url     = API_URL + "/users/" + username + "/groups/" + group_name
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.delete(url,headers=header)
+        self._status = res.status_code
+
+    def retrieve_group_members(self, access_token, group_name):
+        url     = API_URL + "/groups/" + group_name + "/members"
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.get(url,headers=header)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        
+    def retrieve_realm_roles(self, access_token):
+        url     = API_URL + "/roles"
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.get(url,headers=header)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        
+    def retrieve_user_role(self, access_token, username):
+        url     = API_URL + "/users/" + username + "/roles"
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.get(url,headers=header)
+        json_data = json.loads(res.text)
+        self._status = json_data['code']
+        self._data = json_data['roles']
+        
+    def grant_role_to_user(self, access_token, username, role):
+        url     = API_URL + "/users/" + username + "/roles/" + role
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.post(url,headers=header)
+        self._status = res.status_code
+        
+    def revoke_role_from_user(self, access_token, username, role):
+        url     = API_URL + "/users/" + username + "/roles/" + role
+        header = {'Authorization': 'Bearer ' + access_token}
+        res = requests.delete(url,headers=header)
+        self._status = res.status_code
+
+    def health_check(self):
+        url     = API_URL + "/health"
+        res = requests.get(url)
+        self._status = res.status_code

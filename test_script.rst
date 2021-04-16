@@ -105,15 +105,67 @@
 		Verify token     ${new_access_token}    ${client_id}     ${client_secret}
 		Status should be 	  ${http_code_bad_request}
 
+	
+	User who is assigned 'manage-users' role can create a group
+	    Create group    ${manager_access_token}    ${group1}    ${group1_att}
+		Status should be     ${http_code_created}
+				
+	User who is assigned 'manage-users' role can retrieve a group
+	    Get group    ${manager_access_token}    ${group1}
+		Status should be     ${http_code_ok}
+		Data should be    ${group1_att_str}
+		
+	User who is assigned 'manage-users' role can retrieve all group
+	    Get all group    ${manager_access_token}
+		Status should be     ${http_code_ok}
+		
+	User who is assigned 'manage-users' role can update a group
+	    Update group    ${manager_access_token}    ${group1}    ${group1_new_att}
+		Status should be     ${http_code_no_content}
+		Get group    ${manager_access_token}    ${group1}
+		Data should be    ${group1_new_att_str}
+
+	User who is assigned 'manage-users' role can add a user to a group
+	    Assign group user    ${manager_access_token}    ${new_username}   ${group1}
+		Status should be     ${http_code_no_content}
+	
+	User who is assigned 'manage-users' role can revoke a user from a group
+	    Revoke group user    ${manager_access_token}    ${new_username}   ${group1}
+		Status should be     ${http_code_no_content}
+
+	User who is assigned 'manage-users' role can get all realm roles
+	    Get realm roles    ${manager_access_token}
+		Status should be     ${http_code_ok}
+
+	User who is assigned 'manage-users' and 'manage-realms' role can assign a role to a user
+	    Grant user role    ${manager_access_token}    ${new_username}    ${role}
+		Status should be     ${http_code_no_content}
+		
+	User who is assigned 'manage-users' role can get a user's roles
+	    Get user role    ${manager_access_token}    ${new_username}
+		Status should be     ${http_code_ok}
+
+	User who is assigned 'manage-users' and 'manage-realms' role can revoke a user's roles
+	    Revoke user role    ${manager_access_token}    ${new_username}      ${role}
+		Status should be     ${http_code_no_content}
+		Get user role    ${manager_access_token}    ${new_username}
+		Status should be     ${http_code_ok}
+		Should Contain X Times    Data   ${role}   0
+		
+	Anyone can check health of EMGUM services
+		Health   
+		Status should be     ${http_code_ok}
+		
+
 	User who is assigned 'manage-users' role can delete a user
 		Delete user    ${manager_access_token}    ${new_username}
 		Status should be    ${http_code_ok}
 		Retrieve user    ${manager_access_token}    ${new_username}
 		Status should be    ${http_code_ok}
 		Data should be    ${not_found_user}
-
+	
 	*** Variables ***
-	${initial_reg_token}    [Provide initial registration token]   
+	${initial_reg_token}    eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICIzYjM3MWU2Ni0zOTFmLTRhMzMtYjM3OC00Mjc0ZmQ5NTExYzcifQ.eyJleHAiOjE2MTg4NjIyNTYsImlhdCI6MTYxODYwMzA1NiwianRpIjoiYzUyYjc5NjktNTE4Yy00Yjc5LWIwODUtMTBkMWRiNDNhY2UzIiwiaXNzIjoiaHR0cDovLzEyNy4wLjAuMTo4MDgwL2F1dGgvcmVhbG1zL2NmZyIsImF1ZCI6Imh0dHA6Ly8xMjcuMC4wLjE6ODA4MC9hdXRoL3JlYWxtcy9jZmciLCJ0eXAiOiJJbml0aWFsQWNjZXNzVG9rZW4ifQ.eP3u0K7qFezzkNUXkd2B4tiEGC2lgiiUNsire5oHdfc
 	${invalid_reg_token}           '123'
 	${client_name}              test1A
 	${new_client_name}          test1B
@@ -122,14 +174,15 @@
 	${http_code_created}		 201
 	${http_code_bad_request}	 400
 	${http_code_ok}              200
+	${http_code_no_content}      204
 	${shares}					 3
 	${threshold}				 2
 	${invalid_threshold}		 0   
 	@{new_redirect_uris}         localhost3	   localhost4
-	${client_id}              [Provide client id of an OIDC client]  
-	${client_secret}          [Provide client secret of an OIDC client] 
-	${another_client_id}     [Provide client id of another OIDC client] 
-	${another_client_secret}    [Provide client secret of another OIDC client] 
+	${client_id}              emgbc  
+	${client_secret}          cf1493eb-ff4a-497f-a2e2-ee7e218ea4b8 
+	${another_client_id}     emgsmm
+	${another_client_secret}    fd53c3e2-387c-4abd-ac9d-bbe00fcd554e 
 	${new_username}                peter
 	${firstname}               Pete
 	${lastname}                Whit
@@ -139,13 +192,20 @@
 	${lastname_update}        'Pan'
 	${invalid_client_id}       'abc'
 	${super_user_token}      agagaga
-	${resource_server}    [Provide client id of an OIDC client]   
-	${resource}    [Provide resource name of the resource server] 
-	${scope}    [Provide scope name of the resource server] 
-	${manager_user_name}    [Provide user name of a user with 'manage-user' and 'view-users' role]
-	${manager_password}    [Provide password of a user with 'manage-user' and 'view-users' role]
+	${resource_server}    emgsmm   
+	${resource}    credentials 
+	${scope}    delete 
+	${manager_user_name}    manager
+	${manager_password}    123
 	${not_found_user}    The user does not exist
-
+	${group1}   test_group1 
+	${group1_att}   { "name": ["computer science"],"address": ["uow London"]}
+	${group1_att_str}    {u'name': [u'computer science'], u'address': [u'uow London']}
+	${group1_new_att}     { "name": ["computer science"],"address": ["New Cavendish, London"]}
+	${group1_new_att_str}     {u'name': [u'computer science'], u'address': [u'New Cavendish, London']}
+	${role}    developer
+	
+	
 	*** Keywords ***
 	Dynamically register client
 		[Arguments]    ${initial_reg_token}    ${client_name}     ${redirect_uris}
@@ -211,3 +271,51 @@
 	Verify rpt
 		[Arguments]    ${rpt}   ${client_id}   ${client_secret}
 		introspect_rpt    ${rpt}   ${client_id}   ${client_secret}
+		
+	Create group
+		[Arguments]    ${access_token}   ${group_name}   ${group_attributes}
+		create_a_group    ${access_token}   ${group_name}   ${group_attributes}
+
+	Get group
+		[Arguments]    ${access_token}   ${new_group_name}
+		retrieve_a_group    ${access_token}   ${new_group_name}
+		
+	Get all group
+		[Arguments]    ${access_token}
+		retrieve_all_group    ${access_token}
+		
+	Update group
+		[Arguments]    ${access_token}   ${group_name}   ${new_group_attributes}
+		update_a_group    ${access_token}   ${group_name}   ${new_group_attributes}
+
+	Assign group user
+		[Arguments]    ${access_token}   ${username}   ${group_name}
+		assign_user_to_group    ${access_token}   ${username}   ${group_name}
+		
+	Get group members
+		[Arguments]    ${access_token}   ${group_name}
+		retrieve_group_members    ${access_token}   ${group_name}
+		
+	Revoke group user
+		[Arguments]    ${access_token}   ${username}   ${group_name}
+		revoke_user_from_group    ${access_token}    ${username}    ${group_name}
+		
+	Get realm roles
+		[Arguments]    ${access_token}
+		retrieve_realm_roles    ${access_token}
+		
+	Get user role
+		[Arguments]    ${access_token}   ${username}
+		retrieve_user_role    ${access_token}   ${username}
+
+	Grant user role
+		[Arguments]    ${access_token}   ${username}   ${user_role}
+		grant_role_to_user    ${access_token}   ${username}   ${user_role}
+		
+	Revoke user role
+		[Arguments]    ${access_token}   ${username}   ${user_role}
+		revoke_role_from_user    ${access_token}   ${username}   ${user_role}
+		
+	Health
+		health_check
+		
